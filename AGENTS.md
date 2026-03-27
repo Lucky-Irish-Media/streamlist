@@ -139,6 +139,19 @@ lib/mcp/           # MCP server implementation (for stdio-based usage)
 db/                # Database schema and migrations
 ```
 
+### Using StreamList MCP with OpenCode
+
+Set the `STREAMLIST_API_KEY` environment variable with your API key, then use the `streamlist` MCP in prompts:
+
+```bash
+export STREAMLIST_API_KEY="your_api_key_here"
+```
+
+Then in prompts, you can say things like:
+- "Use streamlist to get my recommendations"
+- "Add Inception to my watchlist using streamlist"
+- "What are my liked movies? use streamlist"
+
 ### Before Committing
 1. Run `npx tsc --noEmit` to check for type errors
 2. Ensure build succeeds: `npm run build`
