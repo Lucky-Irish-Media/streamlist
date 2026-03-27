@@ -164,9 +164,9 @@ export default function MediaCard({ item }: MediaCardProps) {
         <div className="card-content">
           <div className="card-title">{title}</div>
           <div className="card-meta">
-            {certification && <span className="certification">{certification}</span>}
             <span className="badge">{mediaType}</span>
             <span className="rating">★ {item.vote_average?.toFixed(1)}</span>
+            <span className="certification">{certification || 'NA'}</span>
           </div>
           <div className="card-actions">
             <button 
@@ -221,10 +221,10 @@ export default function MediaCard({ item }: MediaCardProps) {
                     <div className="modal-info">
                       <h2 className="modal-title">{title}</h2>
                       <div className="modal-meta">
-                        {releaseDate && <span>{releaseDate.slice(0, 4)}</span>}
-                        {certification && <span className="certification">{certification}</span>}
-                        <span className="rating">★ {details.vote_average?.toFixed(1)}</span>
                         <span className="badge">{mediaType}</span>
+                        {releaseDate && <span>{releaseDate.slice(0, 4)}</span>}
+                        <span className="rating">★ {details.vote_average?.toFixed(1)}</span>
+                        <span className="certification">{certification || 'NA'}</span>
                       </div>
                       {details.genres && details.genres.length > 0 && (
                         <div className="modal-genres">
