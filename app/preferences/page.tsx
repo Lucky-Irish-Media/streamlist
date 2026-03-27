@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useUser } from '@/components/UserContext'
+import { useRouter } from 'next/navigation'
 
 const services = [
   { id: '8', name: 'Netflix' },
@@ -44,7 +45,9 @@ const countries = [
 
 export default function PreferencesPage() {
   const { user, refreshUser } = useUser()
+  const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [apiKeyLoading, setApiKeyLoading] = useState(false)
 
   if (!user) {
     return (
@@ -109,6 +112,53 @@ export default function PreferencesPage() {
       console.error('Failed to remove like:', err)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const generateApiKey = async () => {
+    const sessionId = localStorage.getItem('sessionId')
+    setApiKeyLoading(true)
+    try {
+      const res = await fetch('/api/auth/api-key', {
+        method: 'POST',
+        headers: sessionId ? { 'x-session-id': sessionId } : {},
+        credentials: 'include',
+      })
+      if (res.ok) {
+        await refreshUser()
+      }
+    } catch (err) {
+      console.error('Failed to generate API key:', err)
+    } finally {
+      setApiKeyLoading(false)
+    }
+  }
+
+  const revokeApiKey = async () => {
+    const sessionId = localStorage.getItem('sessionId')
+    if (!confirm('Are you sure you want to revoke your API key? Any applications using it will lose access.')) {
+      return
+    }
+    setApiKeyLoading(true)
+    try {
+      const res = await fetch('/api/auth/api-key', {
+        method: 'DELETE',
+        headers: sessionId ? { 'x-session-id': sessionId } : {},
+        credentials: 'include',
+      })
+      if (res.ok) {
+        await refreshUser()
+      }
+    } catch (err) {
+      console.error('Failed to revoke API key:', err)
+    } finally {
+      setApiKeyLoading(false)
+    }
+  }
+
+  const copyApiKey = () => {
+    if (user?.apiKey) {
+      navigator.clipboard.writeText(user.apiKey)
     }
   }
 
@@ -208,6 +258,63 @@ export default function PreferencesPage() {
           </div>
         ) : (
           <p style={{ color: 'var(--text-secondary)' }}>No likes added yet</p>
+        )}
+      </div>
+
+      <div className="section">
+        <h2 className="section-title" style={{ marginBottom: '16px' }}>API Access</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '14px' }}>
+          Use your API key to access your watchlist and preferences from external applications via the MCP server.
+        </p>
+        {user?.apiKey ? (
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              alignItems: 'center',
+              marginBottom: '12px' 
+            }}>
+              <code style={{ 
+                flex: 1, 
+                padding: '10px 14px', 
+                background: 'var(--bg-tertiary)', 
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                fontSize: '13px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {user.apiKey}
+              </code>
+              <button
+                onClick={copyApiKey}
+                className="btn-secondary"
+                style={{ padding: '10px 14px' }}
+              >
+                Copy
+              </button>
+            </div>
+            <button
+              onClick={revokeApiKey}
+              disabled={apiKeyLoading}
+              className="btn-secondary"
+              style={{ 
+                padding: '8px 16px',
+                borderColor: 'var(--error)',
+                color: 'var(--error)',
+              }}
+            >
+              {apiKeyLoading ? 'Revoking...' : 'Revoke Key'}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={generateApiKey}
+            disabled={apiKeyLoading}
+            className="btn-primary"
+          >
+            {apiKeyLoading ? 'Generating...' : 'Generate API Key'}
+          </button>
         )}
       </div>
     </main>

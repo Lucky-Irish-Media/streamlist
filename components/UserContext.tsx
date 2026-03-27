@@ -12,6 +12,7 @@ interface User {
   genres: number[]
   likes: { tmdbId: number; mediaType: string; title: string }[]
   hasCompletedOnboarding: boolean
+  apiKey: string | null
 }
 
 interface UserContextType {

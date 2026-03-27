@@ -1,0 +1,432 @@
+import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js'
+import { drizzle } from 'drizzle-orm/d1'
+import { eq, and } from 'drizzle-orm'
+import * as schema from '@/db/schema'
+
+type DB = ReturnType<typeof drizzle>
+
+interface Context {
+  env: {
+    DB: any
+  }
+  userId: string
+}
+
+let db: DB | null = null
+let context: Context | null = null
+
+function getDb(env: { DB?: any }): DB {
+  if (!db && env?.DB) {
+    db = drizzle(env.DB, { schema })
+  }
+  if (!db) {
+    throw new Error('Database not initialized')
+  }
+  return db
+}
+
+function setContext(ctx: Context) {
+  context = ctx
+}
+
+function getContext(): Context {
+  if (!context) {
+    throw new Error('Context not set - authentication required')
+  }
+  return context
+}
+
+const tools = {
+  get_watchlist: {
+    name: 'get_watchlist',
+    description: 'Get all items in the user\'s watchlist',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  add_to_watchlist: {
+    name: 'add_to_watchlist',
+    description: 'Add a movie or TV show to the watchlist',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tmdb_id: { type: 'number', description: 'The TMDB ID of the movie or TV show' },
+        media_type: { type: 'string', enum: ['movie', 'tv'], description: 'The type of media (movie or tv)' },
+      },
+      required: ['tmdb_id', 'media_type'],
+    },
+  },
+  remove_from_watchlist: {
+    name: 'remove_from_watchlist',
+    description: 'Remove a movie or TV show from the watchlist',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tmdb_id: { type: 'number', description: 'The TMDB ID of the movie or TV show to remove' },
+      },
+      required: ['tmdb_id'],
+    },
+  },
+  get_preferences: {
+    name: 'get_preferences',
+    description: 'Get user preferences including streaming services, genres, likes, and country',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  update_streaming_services: {
+    name: 'update_streaming_services',
+    description: 'Update the user\'s preferred streaming services',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        services: { type: 'array', items: { type: 'string' }, description: 'Array of streaming service IDs (e.g., ["8", "119"] for Netflix, Amazon)' },
+      },
+      required: ['services'],
+    },
+  },
+  update_genres: {
+    name: 'update_genres',
+    description: 'Update the user\'s preferred genres',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        genres: { type: 'array', items: { type: 'number' }, description: 'Array of genre IDs (e.g., [28, 12, 35] for Action, Comedy)' },
+      },
+      required: ['genres'],
+    },
+  },
+  update_country: {
+    name: 'update_country',
+    description: 'Update the user\'s country preference',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        country: { type: 'string', description: 'Country code (e.g., "US", "GB", "CA")' },
+      },
+      required: ['country'],
+    },
+  },
+  add_like: {
+    name: 'add_like',
+    description: 'Add a movie or TV show to user\'s liked list',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tmdb_id: { type: 'number', description: 'The TMDB ID of the movie or TV show' },
+        media_type: { type: 'string', enum: ['movie', 'tv'], description: 'The type of media' },
+        title: { type: 'string', description: 'The title of the movie or TV show' },
+      },
+      required: ['tmdb_id', 'media_type', 'title'],
+    },
+  },
+  remove_like: {
+    name: 'remove_like',
+    description: 'Remove a movie or TV show from user\'s liked list',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tmdb_id: { type: 'number', description: 'The TMDB ID of the movie or TV show to remove' },
+      },
+      required: ['tmdb_id'],
+    },
+  },
+}
+
+async function handleGetWatchlist(): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const items = await database
+    .select()
+    .from(schema.watchlist)
+    .where(eq(schema.watchlist.userId, ctx.userId))
+    .all()
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify(items, null, 2),
+    }],
+  }
+}
+
+async function handleAddToWatchlist(tmdbId: number, mediaType: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const existing = await database
+    .select()
+    .from(schema.watchlist)
+    .where(
+      and(
+        eq(schema.watchlist.userId, ctx.userId),
+        eq(schema.watchlist.tmdbId, tmdbId)
+      )
+    )
+    .get()
+
+  if (existing) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: false, message: 'Already in watchlist' }) }],
+    }
+  }
+
+  await database.insert(schema.watchlist).values({
+    userId: ctx.userId,
+    tmdbId,
+    mediaType,
+  }).run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Added to watchlist' }) }],
+  }
+}
+
+async function handleRemoveFromWatchlist(tmdbId: number): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  await database
+    .delete(schema.watchlist)
+    .where(
+      and(
+        eq(schema.watchlist.userId, ctx.userId),
+        eq(schema.watchlist.tmdbId, tmdbId)
+      )
+    )
+    .run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Removed from watchlist' }) }],
+  }
+}
+
+async function handleGetPreferences(): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const user = await database
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, ctx.userId))
+    .get()
+
+  if (!user) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ error: 'User not found' }) }],
+    }
+  }
+
+  const streamingServices = await database
+    .select()
+    .from(schema.userStreamingServices)
+    .where(eq(schema.userStreamingServices.userId, ctx.userId))
+    .all()
+
+  const genres = await database
+    .select()
+    .from(schema.userGenres)
+    .where(eq(schema.userGenres.userId, ctx.userId))
+    .all()
+
+  const likes = await database
+    .select()
+    .from(schema.userLikes)
+    .where(eq(schema.userLikes.userId, ctx.userId))
+    .all()
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        country: user.country,
+        streamingServices: streamingServices.map(s => s.serviceId),
+        genres: genres.map(g => g.genreId),
+        likes: likes.map(l => ({
+          tmdbId: l.tmdbId,
+          mediaType: l.mediaType,
+          title: l.title,
+        })),
+      }, null, 2),
+    }],
+  }
+}
+
+async function handleUpdateStreamingServices(services: string[]): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  await database
+    .delete(schema.userStreamingServices)
+    .where(eq(schema.userStreamingServices.userId, ctx.userId))
+    .run()
+
+  if (services.length > 0) {
+    await database
+      .insert(schema.userStreamingServices)
+      .values(services.map(serviceId => ({ userId: ctx.userId, serviceId })))
+      .run()
+  }
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Streaming services updated' }) }],
+  }
+}
+
+async function handleUpdateGenres(genres: number[]): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  await database
+    .delete(schema.userGenres)
+    .where(eq(schema.userGenres.userId, ctx.userId))
+    .run()
+
+  if (genres.length > 0) {
+    await database
+      .insert(schema.userGenres)
+      .values(genres.map(genreId => ({ userId: ctx.userId, genreId })))
+      .run()
+  }
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Genres updated' }) }],
+  }
+}
+
+async function handleUpdateCountry(country: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  await database
+    .update(schema.users)
+    .set({ country })
+    .where(eq(schema.users.id, ctx.userId))
+    .run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Country updated' }) }],
+  }
+}
+
+async function handleAddLike(tmdbId: number, mediaType: string, title: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const existing = await database
+    .select()
+    .from(schema.userLikes)
+    .where(
+      and(
+        eq(schema.userLikes.userId, ctx.userId),
+        eq(schema.userLikes.tmdbId, tmdbId)
+      )
+    )
+    .get()
+
+  if (existing) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: false, message: 'Already in likes' }) }],
+    }
+  }
+
+  await database.insert(schema.userLikes).values({
+    userId: ctx.userId,
+    tmdbId,
+    mediaType,
+    title,
+  }).run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Added to likes' }) }],
+  }
+}
+
+async function handleRemoveLike(tmdbId: number): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  await database
+    .delete(schema.userLikes)
+    .where(
+      and(
+        eq(schema.userLikes.userId, ctx.userId),
+        eq(schema.userLikes.tmdbId, tmdbId)
+      )
+    )
+    .run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Removed from likes' }) }],
+  }
+}
+
+export const server = new Server(
+  {
+    name: 'streamlist-mcp-server',
+    version: '1.0.0',
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+)
+
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: Object.values(tools),
+  }
+})
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params as { name: string; arguments: Record<string, unknown> }
+
+  try {
+    switch (name) {
+      case 'get_watchlist':
+        return await handleGetWatchlist()
+      case 'add_to_watchlist':
+        return await handleAddToWatchlist(args.tmdb_id as number, args.media_type as string)
+      case 'remove_from_watchlist':
+        return await handleRemoveFromWatchlist(args.tmdb_id as number)
+      case 'get_preferences':
+        return await handleGetPreferences()
+      case 'update_streaming_services':
+        return await handleUpdateStreamingServices(args.services as string[])
+      case 'update_genres':
+        return await handleUpdateGenres(args.genres as number[])
+      case 'update_country':
+        return await handleUpdateCountry(args.country as string)
+      case 'add_like':
+        return await handleAddLike(args.tmdb_id as number, args.media_type as string, args.title as string)
+      case 'remove_like':
+        return await handleRemoveLike(args.tmdb_id as number)
+      default:
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${name}` }) }],
+          isError: true,
+        }
+    }
+  } catch (error) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ error: String(error) }) }],
+      isError: true,
+    }
+  }
+})
+
+export async function runServer() {
+  const transport = new StdioServerTransport()
+  await server.connect(transport)
+}
+
+export { setContext }

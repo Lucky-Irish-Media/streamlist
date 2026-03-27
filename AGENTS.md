@@ -20,6 +20,9 @@ npm run deploy      # Deploy to Cloudflare Pages (@cloudflare/next-on-pages)
 ```bash
 npm run db:generate  # Generate Drizzle migrations
 npm run db:push      # Push schema to database
+
+# For remote D1 database changes:
+npx wrangler d1 execute streamlist-db --remote --command="ALTER TABLE ..."
 ```
 
 ### Type Checking
@@ -87,6 +90,12 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 - Use helper functions from `lib/db.ts`: `getDB()`, `schema`
 - Query with typed DSL, not raw SQL when possible
 
+### MCP Server
+- MCP endpoint at `app/api/mcp/route.ts` (Edge runtime)
+- API key management at `app/api/auth/api-key/route.ts`
+- Schema includes `users.apiKey` for MCP authentication
+- Tools defined in `lib/mcp/server.ts` (for stdio-based usage)
+
 ### Error Handling
 - API routes: Return `{ error: 'message' }` with appropriate HTTP status
 - Frontend: Display user-friendly error messages, log details to console
@@ -108,11 +117,14 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 - Use `.env.local` for local dev, Cloudflare dashboard for production secrets
 - Validate all user input in API routes
 - Use HTTP-only cookies for session tokens (handled in `lib/auth.ts`)
+- MCP server uses `x-api-key` header for authentication (stored in users table)
 
 ### File Organization
 ```
 app/
 ├── api/           # API routes (Edge runtime)
+│   ├── mcp/       # MCP server endpoint
+│   └── auth/      # Auth endpoints (login, logout, me, api-key)
 ├── login/         # Page route
 ├── preferences/   # Page route
 ├── watchlist/     # Page route
@@ -123,6 +135,7 @@ app/
 
 components/        # Reusable React components
 lib/               # Utilities (auth, db, tmdb)
+lib/mcp/           # MCP server implementation (for stdio-based usage)
 db/                # Database schema and migrations
 ```
 

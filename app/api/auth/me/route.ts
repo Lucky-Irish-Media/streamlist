@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
       genres: genres.map(g => g.genreId),
       likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
       hasCompletedOnboarding,
+      apiKey: user.apiKey,
     } : null,
   })
 }

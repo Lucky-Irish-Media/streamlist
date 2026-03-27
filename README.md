@@ -99,6 +99,94 @@ When deploying, set these in your Cloudflare Pages project settings:
    - Add `TMDB_API_KEY` with your TMDB API key
    - Optionally add `ACCESS_CODE` for account protection
 
+## MCP Server
+
+StreamList includes an MCP (Model Context Protocol) server that allows external applications to interact with your watchlist and preferences programmatically.
+
+### Generating an API Key
+
+1. Log in to your account
+2. Go to **Preferences**
+3. Scroll to **API Access** section
+4. Click **Generate API Key**
+5. Copy your API key (or regenerate if needed)
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_watchlist` | List all items in your watchlist |
+| `add_to_watchlist` | Add a movie or TV show (`tmdb_id`, `media_type`) |
+| `remove_from_watchlist` | Remove an item (`tmdb_id`) |
+| `get_preferences` | Get streaming services, genres, likes, and country |
+| `update_streaming_services` | Set streaming services (`services` array) |
+| `update_genres` | Set preferred genres (`genres` array) |
+| `update_country` | Set country code (`country`) |
+| `add_like` | Like a movie/show (`tmdb_id`, `media_type`, `title`) |
+| `remove_like` | Unlike a movie/show (`tmdb_id`) |
+
+### API Usage
+
+Make JSON-RPC 2.0 requests to `/api/mcp`:
+
+```bash
+curl -X POST https://your-domain/api/mcp \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": { "name": "get_watchlist" },
+    "id": 1
+  }'
+```
+
+**Example: Add to watchlist**
+```bash
+curl -X POST https://your-domain/api/mcp \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "add_to_watchlist",
+      "arguments": { "tmdb_id": 550, "media_type": "movie" }
+    },
+    "id": 1
+  }'
+```
+
+**Example: Get preferences**
+```bash
+curl -X POST https://your-domain/api/mcp \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": { "name": "get_preferences" },
+    "id": 1
+  }'
+```
+
+### Using with Claude Desktop
+
+You can create a custom MCP client config for Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "streamlist": {
+      "command": "npx",
+      "args": ["-y", "https://your-domain/api/mcp"]
+    }
+  }
+}
+```
+
+Or use an MCP client like `mcp-client` to make requests programmatically.
+
 ## Project Structure
 
 ```
@@ -111,7 +199,7 @@ streamlist/
 │   └── browse/            # Browse page
 ├── components/            # React components
 ├── db/                    # Database schema
-├── lib/                   # Utilities (auth, db, tmdb)
+├── lib/                   # Utilities (auth, db, tmdb, mcp)
 └── public/                # Static assets
 ```
 

@@ -5,6 +5,7 @@ export const users = sqliteTable('users', {
   username: text('username').notNull().unique(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   country: text('country').notNull().$defaultFn(() => 'US'),
+  apiKey: text('api_key'),
 })
 
 export const userStreamingServices = sqliteTable('user_streaming_services', {
