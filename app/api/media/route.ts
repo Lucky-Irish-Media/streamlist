@@ -1,7 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders } from '@/lib/tmdb'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings } from '@/lib/tmdb'
 
 export const runtime = 'edge'
+
+async function getCertification(mediaType: string, id: number, country: string) {
+  try {
+    if (mediaType === 'movie') {
+      const releaseDates = await getMovieReleaseDates(id)
+      const countryData = releaseDates.results.find(r => r.iso_3166_1 === country)
+      if (countryData?.release_dates?.[0]?.certification) {
+        return countryData.release_dates[0].certification
+      }
+      const usData = releaseDates.results.find(r => r.iso_3166_1 === 'US')
+      return usData?.release_dates?.[0]?.certification || null
+    } else {
+      const contentRatings = await getTVContentRatings(id)
+      const countryData = contentRatings.results.find(r => r.iso_3166_1 === country)
+      if (countryData?.rating) {
+        return countryData.rating
+      }
+      const usData = contentRatings.results.find(r => r.iso_3166_1 === 'US')
+      return usData?.rating || null
+    }
+  } catch {
+    return null
+  }
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -28,7 +52,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid media type' }, { status: 400 })
     }
 
-    const [item, providers] = await Promise.all([detailsPromise, providersPromise])
+    const [item, providers, certification] = await Promise.all([
+      detailsPromise,
+      providersPromise,
+      getCertification(mediaType, id, country)
+    ])
+
     const countryData = providers.results?.[country]
     const flatrate = countryData?.flatrate || []
 
@@ -36,6 +65,7 @@ export async function GET(req: NextRequest) {
       ...item,
       media_type: mediaType,
       image: getImageUrl(item.poster_path, 'w185'),
+      certification,
       watchProviders: {
         country,
         flatrate: flatrate.map(p => ({

@@ -137,6 +137,18 @@ export async function getTVDetails(tvId: number): Promise<MediaItem & { genres: 
   return fetchFromTMDB(`/tv/${tvId}`)
 }
 
+export async function getMovieReleaseDates(movieId: number): Promise<{
+  results: Array<{ iso_3166_1: string; release_dates: Array<{ certification: string }> }>
+}> {
+  return fetchFromTMDB(`/movie/${movieId}/release_dates`)
+}
+
+export async function getTVContentRatings(tvId: number): Promise<{
+  results: Array<{ iso_3166_1: string; rating: string }>
+}> {
+  return fetchFromTMDB(`/tv/${tvId}/content_ratings`)
+}
+
 export function getImageUrl(path: string | null, size: 'w185' | 'w500' | 'original' = 'w500'): string {
   if (!path) return '/placeholder.jpg'
   return `https://image.tmdb.org/t/p/${size}${path}`

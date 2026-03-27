@@ -17,6 +17,7 @@ interface MediaItem {
   release_date?: string
   first_air_date?: string
   genres?: { id: number; name: string }[]
+  certification?: string | null
 }
 
 interface MediaCardProps {
@@ -154,6 +155,7 @@ export default function MediaCard({ item }: MediaCardProps) {
 
   const title = item.title || item.name || ''
   const releaseDate = item.release_date || item.first_air_date || ''
+  const certification = (details as any)?.certification || (item as any).certification
 
   return (
     <>
@@ -162,6 +164,7 @@ export default function MediaCard({ item }: MediaCardProps) {
         <div className="card-content">
           <div className="card-title">{title}</div>
           <div className="card-meta">
+            {certification && <span className="certification">{certification}</span>}
             <span className="badge">{mediaType}</span>
             <span className="rating">★ {item.vote_average?.toFixed(1)}</span>
           </div>
@@ -219,6 +222,7 @@ export default function MediaCard({ item }: MediaCardProps) {
                       <h2 className="modal-title">{title}</h2>
                       <div className="modal-meta">
                         {releaseDate && <span>{releaseDate.slice(0, 4)}</span>}
+                        {certification && <span className="certification">{certification}</span>}
                         <span className="rating">★ {details.vote_average?.toFixed(1)}</span>
                         <span className="badge">{mediaType}</span>
                       </div>
