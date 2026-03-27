@@ -5,3 +5,5 @@ node_modules
 .env*
 local.db
 dist
+tsconfig.tsbuildinfo
+.opencode/
