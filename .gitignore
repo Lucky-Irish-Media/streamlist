@@ -1,0 +1,7 @@
+node_modules
+.next
+.vercel
+*.local
+.env*
+local.db
+dist
