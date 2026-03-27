@@ -36,6 +36,15 @@ export const watchlist = sqliteTable('watchlist', {
   addedAt: integer('added_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 
+export const watched = sqliteTable('watched', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().references(() => users.id),
+  tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
+  mediaType: text('media_type').notNull(),
+  title: text('title').notNull(),
+  watchedAt: integer('watched_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})
+
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id),

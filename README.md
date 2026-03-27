@@ -113,17 +113,34 @@ StreamList includes an MCP (Model Context Protocol) server that allows external 
 
 ### Available Tools
 
+#### Watchlist & History
 | Tool | Description |
 |------|-------------|
 | `get_watchlist` | List all items in your watchlist |
 | `add_to_watchlist` | Add a movie or TV show (`tmdb_id`, `media_type`) |
-| `remove_from_watchlist` | Remove an item (`tmdb_id`) |
+| `remove_from_watchlist` | Remove an item from watchlist (`tmdb_id`) |
+| `get_watch_history` | List all watched movies/shows |
+| `mark_as_watched` | Mark as watched (`tmdb_id`, `media_type`, `title`) |
+| `remove_from_watch_history` | Remove from watch history (`tmdb_id`) |
+
+#### Preferences
+| Tool | Description |
+|------|-------------|
 | `get_preferences` | Get streaming services, genres, likes, and country |
 | `update_streaming_services` | Set streaming services (`services` array) |
 | `update_genres` | Set preferred genres (`genres` array) |
 | `update_country` | Set country code (`country`) |
 | `add_like` | Like a movie/show (`tmdb_id`, `media_type`, `title`) |
 | `remove_like` | Unlike a movie/show (`tmdb_id`) |
+
+#### Discovery
+| Tool | Description |
+|------|-------------|
+| `get_recommendations` | Get personalized recommendations based on your likes |
+| `get_trending` | Get trending movies/shows (`media_type`, `page`) |
+| `search_media` | Search for movies/shows (`query`, `page`) |
+| `get_media_details` | Get full details of a movie/show (`tmdb_id`, `media_type`) |
+| `get_watch_providers` | Get streaming providers in your country (`tmdb_id`, `media_type`) |
 
 ### API Usage
 
@@ -166,6 +183,45 @@ curl -X POST https://your-domain/api/mcp \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": { "name": "get_preferences" },
+    "id": 1
+  }'
+```
+
+**Example: Get personalized recommendations**
+```bash
+curl -X POST https://your-domain/api/mcp \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": { "name": "get_recommendations" },
+    "id": 1
+  }'
+```
+
+**Example: Search for a movie**
+```bash
+curl -X POST https://your-domain/api/mcp \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": { "name": "search_media", "arguments": { "query": "Inception" } },
+    "id": 1
+  }'
+```
+
+**Example: Get streaming providers**
+```bash
+curl -X POST https://your-domain/api/mcp \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": { "name": "get_watch_providers", "arguments": { "tmdb_id": 550, "media_type": "movie" } },
     "id": 1
   }'
 ```

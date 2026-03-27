@@ -3,6 +3,21 @@ import { getRequestContext } from '@cloudflare/next-on-pages'
 import { drizzle } from 'drizzle-orm/d1'
 import { eq, and } from 'drizzle-orm'
 import * as schema from '@/db/schema'
+import {
+  searchMulti,
+  getMovieDetails,
+  getTVDetails,
+  getTrending,
+  getMovieWatchProviders,
+  getTVWatchProviders,
+  getMovieRecommendations,
+  getTVRecommendations,
+  getMovieSimilar,
+  getTVSimilar,
+  getImageUrl,
+  STREAMING_SERVICES,
+  TMDB_GENRES,
+} from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
@@ -20,6 +35,46 @@ async function getUserByApiKey(db: ReturnType<typeof drizzle>, apiKey: string): 
     .where(eq(schema.users.apiKey, apiKey))
     .get()
   return user?.id ?? null
+}
+
+async function getUserPreferences(db: ReturnType<typeof drizzle>, userId: string) {
+  const user = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .get()
+
+  const streamingServices = await db
+    .select()
+    .from(schema.userStreamingServices)
+    .where(eq(schema.userStreamingServices.userId, userId))
+    .all()
+
+  const genres = await db
+    .select()
+    .from(schema.userGenres)
+    .where(eq(schema.userGenres.userId, userId))
+    .all()
+
+  const likes = await db
+    .select()
+    .from(schema.userLikes)
+    .where(eq(schema.userLikes.userId, userId))
+    .all()
+
+  const watchlistItems = await db
+    .select()
+    .from(schema.watchlist)
+    .where(eq(schema.watchlist.userId, userId))
+    .all()
+
+  return {
+    country: user?.country || 'US',
+    streamingServices: streamingServices.map(s => s.serviceId),
+    genres: genres.map(g => g.genreId),
+    likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
+    watchlist: watchlistItems.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })),
+  }
 }
 
 async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolName: string, args?: Record<string, unknown>) {
@@ -175,6 +230,211 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
         .run()
       return { success: true, message: 'Removed from likes' }
     }
+    case 'get_watch_history': {
+      const items = await db
+        .select()
+        .from(schema.watched)
+        .where(eq(schema.watched.userId, userId))
+        .all()
+      return items
+    }
+    case 'mark_as_watched': {
+      const { tmdb_id, media_type, title } = args as { tmdb_id: number; media_type: string; title: string }
+      const existing = await db
+        .select()
+        .from(schema.watched)
+        .where(
+          and(
+            eq(schema.watched.userId, userId),
+            eq(schema.watched.tmdbId, tmdb_id)
+          )
+        )
+        .get()
+      if (existing) {
+        return { success: false, message: 'Already in watch history' }
+      }
+      await db.insert(schema.watched).values({
+        userId,
+        tmdbId: tmdb_id,
+        mediaType: media_type,
+        title,
+      }).run()
+      return { success: true, message: 'Marked as watched' }
+    }
+    case 'remove_from_watch_history': {
+      const { tmdb_id } = args as { tmdb_id: number }
+      await db
+        .delete(schema.watched)
+        .where(
+          and(
+            eq(schema.watched.userId, userId),
+            eq(schema.watched.tmdbId, tmdb_id)
+          )
+        )
+        .run()
+      return { success: true, message: 'Removed from watch history' }
+    }
+    case 'search_media': {
+      const { query, page = 1 } = args as { query: string; page?: number }
+      const results = await searchMulti(query, page)
+      return results.results
+        .filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
+        .slice(0, 20)
+        .map((r: any) => ({
+          id: r.id,
+          title: r.title || r.name,
+          mediaType: r.media_type,
+          overview: r.overview,
+          posterPath: r.poster_path,
+          backdropPath: r.backdrop_path,
+          voteAverage: r.vote_average,
+          releaseDate: r.release_date || r.first_air_date,
+        }))
+    }
+    case 'get_media_details': {
+      const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+      if (media_type === 'movie') {
+        const details = await getMovieDetails(tmdb_id)
+        return {
+          id: details.id,
+          title: details.title,
+          mediaType: 'movie',
+          overview: details.overview,
+          posterPath: details.poster_path,
+          backdropPath: details.backdrop_path,
+          voteAverage: details.vote_average,
+          releaseDate: details.release_date,
+          genres: details.genres,
+        }
+      } else {
+        const details = await getTVDetails(tmdb_id)
+        return {
+          id: details.id,
+          title: details.name,
+          mediaType: 'tv',
+          overview: details.overview,
+          posterPath: details.poster_path,
+          backdropPath: details.backdrop_path,
+          voteAverage: details.vote_average,
+          releaseDate: details.first_air_date,
+          genres: details.genres,
+        }
+      }
+    }
+    case 'get_trending': {
+      const { media_type = 'all', page = 1 } = args as { media_type?: string; page?: number }
+      const results = await getTrending(media_type as 'all' | 'movie' | 'tv', page)
+      return results.results.map((r: any) => ({
+        id: r.id,
+        title: r.title || r.name,
+        mediaType: r.media_type || media_type,
+        overview: r.overview,
+        posterPath: r.poster_path,
+        backdropPath: r.backdrop_path,
+        voteAverage: r.vote_average,
+        releaseDate: r.release_date || r.first_air_date,
+      }))
+    }
+    case 'get_recommendations': {
+      const prefs = await getUserPreferences(db, userId)
+      const excludeIds = new Set([
+        ...prefs.likes.map((l: any) => l.tmdbId),
+        ...prefs.watchlist.map((w: any) => w.tmdbId),
+      ])
+
+      let recommendations: any[] = []
+
+      if (prefs.likes.length > 0) {
+        const likeBatches = prefs.likes.slice(0, 3)
+        const fetches = likeBatches.flatMap((like: any) => {
+          if (like.mediaType === 'movie') {
+            return [
+              getMovieRecommendations(like.tmdbId).then(r => r.results),
+              getMovieSimilar(like.tmdbId).then(r => r.results),
+            ]
+          } else {
+            return [
+              getTVRecommendations(like.tmdbId).then(r => r.results),
+              getTVSimilar(like.tmdbId).then(r => r.results),
+            ]
+          }
+        })
+
+        const settled = await Promise.allSettled(fetches)
+        const pool: any[] = []
+        for (const result of settled) {
+          if (result.status === 'fulfilled') {
+            for (const item of result.value) {
+              if (!excludeIds.has(item.id)) {
+                pool.push(item)
+              }
+            }
+          }
+        }
+
+        const deduped = new Map<number, any>()
+        for (const item of pool) {
+          if (!deduped.has(item.id)) {
+            deduped.set(item.id, item)
+          }
+        }
+        const shuffled = Array.from(deduped.values()).sort(() => Math.random() - 0.5)
+        recommendations = shuffled.slice(0, 10)
+      }
+
+      if (recommendations.length < 10 && prefs.genres.length > 0) {
+        const genreStr = prefs.genres.join(',')
+        const randomPage = String(Math.floor(Math.random() * 5) + 1)
+
+        const { fetchFromTMDB } = await import('@/lib/tmdb')
+        const [movieRecs, tvRecs] = await Promise.all([
+          (await import('@/lib/tmdb')).discoverMovies({ with_genres: genreStr, sort_by: 'popularity.desc', page: randomPage }),
+          (await import('@/lib/tmdb')).discoverTVShows({ with_genres: genreStr, sort_by: 'popularity.desc', page: randomPage }),
+        ])
+
+        const existingIds = new Set(recommendations.map((r: any) => r.id))
+        for (const item of [...movieRecs.results, ...tvRecs.results]) {
+          if (recommendations.length >= 20) break
+          if (!excludeIds.has(item.id) && !existingIds.has(item.id)) {
+            recommendations.push(item)
+          }
+        }
+      }
+
+      return recommendations.map((r: any) => ({
+        id: r.id,
+        title: r.title || r.name,
+        mediaType: r.media_type,
+        overview: r.overview,
+        posterPath: r.poster_path,
+        voteAverage: r.vote_average,
+        releaseDate: r.release_date || r.first_air_date,
+      }))
+    }
+    case 'get_watch_providers': {
+      const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+      const prefs = await getUserPreferences(db, userId)
+      
+      let providers: any
+      if (media_type === 'movie') {
+        providers = await getMovieWatchProviders(tmdb_id)
+      } else {
+        providers = await getTVWatchProviders(tmdb_id)
+      }
+
+      const countryProviders = providers.results?.[prefs.country]
+      if (!countryProviders?.flatrate) {
+        return { providers: [], message: `No streaming providers found in ${prefs.country}` }
+      }
+
+      return {
+        providers: countryProviders.flatrate.map((p: any) => ({
+          id: p.provider_id,
+          name: p.provider_name,
+          logoPath: p.logo_path,
+        })),
+      }
+    }
     default:
       return { error: `Unknown tool: ${toolName}` }
   }
@@ -255,6 +515,14 @@ export async function GET() {
     { name: 'update_country', description: 'Update the user\'s country preference', inputSchema: { type: 'object', properties: { country: { type: 'string' } }, required: ['country'] } },
     { name: 'add_like', description: 'Add a movie or TV show to user\'s liked list', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, title: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'title'] } },
     { name: 'remove_like', description: 'Remove a movie or TV show from user\'s liked list', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
+    { name: 'get_watch_history', description: 'Get user\'s watch history (movies/shows marked as watched)', inputSchema: { type: 'object', properties: {} } },
+    { name: 'mark_as_watched', description: 'Mark a movie or TV show as watched', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, title: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'title'] } },
+    { name: 'remove_from_watch_history', description: 'Remove a movie or TV show from watch history', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
+    { name: 'search_media', description: 'Search for movies or TV shows by query', inputSchema: { type: 'object', properties: { query: { type: 'string' }, page: { type: 'number' } }, required: ['query'] } },
+    { name: 'get_media_details', description: 'Get detailed information about a specific movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
+    { name: 'get_trending', description: 'Get trending movies or TV shows', inputSchema: { type: 'object', properties: { media_type: { type: 'string', enum: ['all', 'movie', 'tv'] }, page: { type: 'number' } } } },
+    { name: 'get_recommendations', description: 'Get personalized recommendations based on user\'s likes and preferences', inputSchema: { type: 'object', properties: {} } },
+    { name: 'get_watch_providers', description: 'Get streaming providers for a movie or TV show in user\'s country', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
   ]
 
   return NextResponse.json({
