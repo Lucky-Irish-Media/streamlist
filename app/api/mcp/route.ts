@@ -14,10 +14,36 @@ import {
   getTVRecommendations,
   getMovieSimilar,
   getTVSimilar,
+  getMovieReleaseDates,
+  getTVContentRatings,
   getImageUrl,
   STREAMING_SERVICES,
   TMDB_GENRES,
 } from '@/lib/tmdb'
+
+async function getCertification(mediaType: string, id: number, country: string) {
+  try {
+    if (mediaType === 'movie') {
+      const releaseDates = await getMovieReleaseDates(id)
+      const countryData = releaseDates.results.find(r => r.iso_3166_1 === country)
+      if (countryData?.release_dates?.[0]?.certification) {
+        return countryData.release_dates[0].certification
+      }
+      const usData = releaseDates.results.find(r => r.iso_3166_1 === 'US')
+      return usData?.release_dates?.[0]?.certification || null
+    } else {
+      const contentRatings = await getTVContentRatings(id)
+      const countryData = contentRatings.results.find(r => r.iso_3166_1 === country)
+      if (countryData?.rating) {
+        return countryData.rating
+      }
+      const usData = contentRatings.results.find(r => r.iso_3166_1 === 'US')
+      return usData?.rating || null
+    }
+  } catch {
+    return null
+  }
+}
 
 export const runtime = 'edge'
 
@@ -293,6 +319,8 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
     }
     case 'get_media_details': {
       const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+      const prefs = await getUserPreferences(db, userId)
+      const certification = await getCertification(media_type, tmdb_id, prefs.country)
       if (media_type === 'movie') {
         const details = await getMovieDetails(tmdb_id)
         return {
@@ -305,6 +333,7 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
           voteAverage: details.vote_average,
           releaseDate: details.release_date,
           genres: details.genres,
+          certification: certification || 'NA',
         }
       } else {
         const details = await getTVDetails(tmdb_id)
@@ -318,6 +347,7 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
           voteAverage: details.vote_average,
           releaseDate: details.first_air_date,
           genres: details.genres,
+          certification: certification || 'NA',
         }
       }
     }
@@ -346,27 +376,28 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
 
       if (prefs.likes.length > 0) {
         const likeBatches = prefs.likes.slice(0, 3)
-        const fetches = likeBatches.flatMap((like: any) => {
-          if (like.mediaType === 'movie') {
-            return [
-              getMovieRecommendations(like.tmdbId).then(r => r.results),
-              getMovieSimilar(like.tmdbId).then(r => r.results),
-            ]
-          } else {
-            return [
-              getTVRecommendations(like.tmdbId).then(r => r.results),
-              getTVSimilar(like.tmdbId).then(r => r.results),
-            ]
-          }
-        })
+        const fetchPromises: Array<{ promise: Promise<any>; mediaType: string }> = []
 
-        const settled = await Promise.allSettled(fetches)
+        for (const like of likeBatches) {
+          if (like.mediaType === 'movie') {
+            fetchPromises.push({ promise: getMovieRecommendations(like.tmdbId), mediaType: 'movie' })
+            fetchPromises.push({ promise: getMovieSimilar(like.tmdbId), mediaType: 'movie' })
+          } else {
+            fetchPromises.push({ promise: getTVRecommendations(like.tmdbId), mediaType: 'tv' })
+            fetchPromises.push({ promise: getTVSimilar(like.tmdbId), mediaType: 'tv' })
+          }
+        }
+
+        const settled = await Promise.allSettled(fetchPromises.map(fp => fp.promise))
         const pool: any[] = []
-        for (const result of settled) {
+
+        for (let i = 0; i < settled.length; i++) {
+          const result = settled[i]
+          const mediaType = fetchPromises[i].mediaType
           if (result.status === 'fulfilled') {
-            for (const item of result.value) {
+            for (const item of result.value.results) {
               if (!excludeIds.has(item.id)) {
-                pool.push(item)
+                pool.push({ ...item, mediaType })
               }
             }
           }
@@ -386,17 +417,22 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
         const genreStr = prefs.genres.join(',')
         const randomPage = String(Math.floor(Math.random() * 5) + 1)
 
-        const { fetchFromTMDB } = await import('@/lib/tmdb')
         const [movieRecs, tvRecs] = await Promise.all([
           (await import('@/lib/tmdb')).discoverMovies({ with_genres: genreStr, sort_by: 'popularity.desc', page: randomPage }),
           (await import('@/lib/tmdb')).discoverTVShows({ with_genres: genreStr, sort_by: 'popularity.desc', page: randomPage }),
         ])
 
         const existingIds = new Set(recommendations.map((r: any) => r.id))
-        for (const item of [...movieRecs.results, ...tvRecs.results]) {
+        for (const item of movieRecs.results) {
           if (recommendations.length >= 20) break
           if (!excludeIds.has(item.id) && !existingIds.has(item.id)) {
-            recommendations.push(item)
+            recommendations.push({ ...item, mediaType: 'movie' })
+          }
+        }
+        for (const item of tvRecs.results) {
+          if (recommendations.length >= 20) break
+          if (!excludeIds.has(item.id) && !existingIds.has(item.id)) {
+            recommendations.push({ ...item, mediaType: 'tv' })
           }
         }
       }
@@ -404,7 +440,7 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
       return recommendations.map((r: any) => ({
         id: r.id,
         title: r.title || r.name,
-        mediaType: r.media_type,
+        mediaType: r.mediaType,
         overview: r.overview,
         posterPath: r.poster_path,
         voteAverage: r.vote_average,

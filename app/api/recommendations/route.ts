@@ -76,27 +76,28 @@ export async function GET(req: NextRequest) {
 
   if (userPreferences.likes.length > 0) {
     const likeBatches = userPreferences.likes.slice(0, 5)
-    const fetches = likeBatches.flatMap(like => {
-      if (like.mediaType === 'movie') {
-        return [
-          getMovieRecommendations(like.tmdbId).then(r => r.results),
-          getMovieSimilar(like.tmdbId).then(r => r.results),
-        ]
-      } else {
-        return [
-          getTVRecommendations(like.tmdbId).then(r => r.results),
-          getTVSimilar(like.tmdbId).then(r => r.results),
-        ]
-      }
-    })
+    const fetchPromises: Array<{ promise: Promise<any>; mediaType: string }> = []
 
-    const settled = await Promise.allSettled(fetches)
+    for (const like of likeBatches) {
+      if (like.mediaType === 'movie') {
+        fetchPromises.push({ promise: getMovieRecommendations(like.tmdbId), mediaType: 'movie' })
+        fetchPromises.push({ promise: getMovieSimilar(like.tmdbId), mediaType: 'movie' })
+      } else {
+        fetchPromises.push({ promise: getTVRecommendations(like.tmdbId), mediaType: 'tv' })
+        fetchPromises.push({ promise: getTVSimilar(like.tmdbId), mediaType: 'tv' })
+      }
+    }
+
+    const settled = await Promise.allSettled(fetchPromises.map(fp => fp.promise))
     const pool: any[] = []
-    for (const result of settled) {
+
+    for (let i = 0; i < settled.length; i++) {
+      const result = settled[i]
+      const mediaType = fetchPromises[i].mediaType
       if (result.status === 'fulfilled') {
-        for (const item of result.value) {
+        for (const item of result.value.results) {
           if (!excludeIds.has(item.id)) {
-            pool.push(item)
+            pool.push({ ...item, mediaType })
           }
         }
       }
@@ -143,8 +144,7 @@ export async function GET(req: NextRequest) {
       tv: onTheAir.results.slice(0, 10).map((m: any) => ({ ...m, mediaType: 'tv', image: getImageUrl(m.poster_path) })),
     },
     recommendations: recommendations.map((m: any) => {
-      const mediaType = m.media_type || 'movie'
-      return { ...m, mediaType, image: getImageUrl(m.poster_path) }
+      return { ...m, image: getImageUrl(m.poster_path) }
     }),
     userPreferences,
   })
