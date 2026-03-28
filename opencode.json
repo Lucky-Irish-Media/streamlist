@@ -3,7 +3,7 @@
   "mcp": {
     "streamlist": {
       "type": "remote",
-      "url": "https://streamlist-40n.pages.dev/api/mcp",
+      "url": "https://your-domain.pages.dev/api/mcp",
       "enabled": true,
       "headers": {
         "x-api-key": "{env:STREAMLIST_API_KEY}"

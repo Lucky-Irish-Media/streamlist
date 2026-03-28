@@ -141,7 +141,9 @@ db/                # Database schema and migrations
 
 ### Using StreamList MCP with OpenCode
 
-Set the `STREAMLIST_API_KEY` environment variable with your API key, then use the `streamlist` MCP in prompts:
+1. Update the URL in `opencode.json` to match your deployment
+2. Generate an API key in Preferences → API Access
+3. Set the `STREAMLIST_API_KEY` environment variable:
 
 ```bash
 export STREAMLIST_API_KEY="your_api_key_here"
