@@ -33,6 +33,10 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [loadingWatchlist, setLoadingWatchlist] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
   const [loadingLiked, setLoadingLiked] = useState(true)
+  const [isWatched, setIsWatched] = useState(false)
+  const [loadingWatched, setLoadingWatched] = useState(true)
+  const [imageError, setImageError] = useState(false)
+  const [modalImageError, setModalImageError] = useState(false)
   const mediaType = item.media_type || item.mediaType || 'movie'
 
   useEffect(() => {
@@ -64,6 +68,33 @@ export default function MediaCard({ item }: MediaCardProps) {
       .catch(() => {})
       .finally(() => setLoadingLiked(false))
   }, [item.id, mediaType])
+
+  useEffect(() => {
+    const sessionId = localStorage.getItem('sessionId')
+    fetch('/api/watched', {
+      credentials: 'include',
+      headers: sessionId ? { 'x-session-id': sessionId } : {}
+    })
+      .then(res => res.json())
+      .then(data => {
+        const exists = data.watched?.some((w: any) => w.tmdbId === item.id && w.mediaType === mediaType)
+        setIsWatched(!!exists)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingWatched(false))
+  }, [item.id, mediaType])
+
+  useEffect(() => {
+    const country = user?.country || 'US'
+    fetch(`/api/media?id=${item.id}&type=${mediaType}&country=${country}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.certification) {
+          setDetails(data as any)
+        }
+      })
+      .catch(() => {})
+  }, [item.id, mediaType, user?.country])
 
   const openModal = async () => {
     if (showModal) return
@@ -148,6 +179,48 @@ export default function MediaCard({ item }: MediaCardProps) {
     }
   }
 
+  const toggleWatched = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const sessionId = localStorage.getItem('sessionId')
+    if (!sessionId) {
+      alert('Please log in')
+      return
+    }
+    try {
+      if (isWatched) {
+        await fetch('/api/watched', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(sessionId ? { 'x-session-id': sessionId } : {})
+          },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: item.id, mediaType }),
+        })
+        setIsWatched(false)
+      } else {
+        const res = await fetch('/api/watched', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(sessionId ? { 'x-session-id': sessionId } : {})
+          },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: item.id, mediaType, title: item.title || item.name }),
+        })
+        const data = await res.json()
+        if (data.error) {
+          alert('Error: ' + data.error)
+        } else {
+          setIsWatched(true)
+          setInWatchlist(true)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle watched:', err)
+    }
+  }
+
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation()
     openModal()
@@ -157,10 +230,18 @@ export default function MediaCard({ item }: MediaCardProps) {
   const releaseDate = item.release_date || item.first_air_date || ''
   const certification = (details as any)?.certification || (item as any).certification
 
+  const placeholderImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect fill="%23222" width="200" height="300"/><text fill="%23666" font-family="system-ui" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">No Image</text></svg>')
+  const imageSrc = (item.image && !imageError) ? item.image : placeholderImage
+
   return (
     <>
       <div className="card">
-        <img src={item.image} alt={title} className="card-image" />
+        <img 
+          src={imageSrc} 
+          alt={title} 
+          className="card-image"
+          onError={() => setImageError(true)}
+        />
         <div className="card-content">
           <div className="card-title">{title}</div>
           <div className="card-meta">
@@ -169,6 +250,14 @@ export default function MediaCard({ item }: MediaCardProps) {
             <span className="certification">{certification || 'NA'}</span>
           </div>
           <div className="card-actions">
+            <button 
+              onClick={toggleWatched}
+              className="icon-btn" 
+              title={isWatched ? 'Mark as Unwatched' : 'Mark as Watched'}
+              disabled={loadingWatched}
+            >
+              {isWatched ? '✅' : '👁️'}
+            </button>
             <button 
               onClick={toggleLike}
               className="icon-btn" 
@@ -214,9 +303,10 @@ export default function MediaCard({ item }: MediaCardProps) {
                   )}
                   <div className="modal-hero-content">
                     <img 
-                      src={details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : item.image} 
+                      src={details.poster_path && !modalImageError ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : imageSrc} 
                       alt={title}
                       className="modal-poster"
+                      onError={() => setModalImageError(true)}
                     />
                     <div className="modal-info">
                       <h2 className="modal-title">{title}</h2>
@@ -233,6 +323,21 @@ export default function MediaCard({ item }: MediaCardProps) {
                           ))}
                         </div>
                       )}
+                      <button
+                        onClick={toggleWatched}
+                        style={{
+                          marginTop: '16px',
+                          padding: '12px 24px',
+                          backgroundColor: isWatched ? 'var(--bg-tertiary)' : 'var(--accent)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                        }}
+                      >
+                        {isWatched ? '✓ Already Watched' : 'Mark as Watched'}
+                      </button>
                     </div>
                   </div>
                 </div>

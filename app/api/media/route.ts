@@ -7,20 +7,22 @@ async function getCertification(mediaType: string, id: number, country: string) 
   try {
     if (mediaType === 'movie') {
       const releaseDates = await getMovieReleaseDates(id)
-      const countryData = releaseDates.results.find(r => r.iso_3166_1 === country)
-      if (countryData?.release_dates?.[0]?.certification) {
-        return countryData.release_dates[0].certification
+      const findCertification = (isoCode: string) => {
+        const data = releaseDates.results.find(r => r.iso_3166_1 === isoCode)
+        if (!data?.release_dates) return null
+        for (const rd of data.release_dates) {
+          if (rd.certification) return rd.certification
+        }
+        return null
       }
-      const usData = releaseDates.results.find(r => r.iso_3166_1 === 'US')
-      return usData?.release_dates?.[0]?.certification || null
+      return findCertification(country) || findCertification('US') || null
     } else {
       const contentRatings = await getTVContentRatings(id)
-      const countryData = contentRatings.results.find(r => r.iso_3166_1 === country)
-      if (countryData?.rating) {
-        return countryData.rating
+      const findCertification = (isoCode: string) => {
+        const data = contentRatings.results.find(r => r.iso_3166_1 === isoCode)
+        return data?.rating || null
       }
-      const usData = contentRatings.results.find(r => r.iso_3166_1 === 'US')
-      return usData?.rating || null
+      return findCertification(country) || findCertification('US') || null
     }
   } catch {
     return null
