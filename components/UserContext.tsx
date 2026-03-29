@@ -39,17 +39,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   const refreshUser = async () => {
-    console.log('refreshUser called')
-    console.log('localStorage:', typeof localStorage !== 'undefined' ? localStorage.getItem('sessionId') : 'not available')
     const sessionId = typeof localStorage !== 'undefined' ? localStorage.getItem('sessionId') : null
-    console.log('sessionId:', sessionId)
     const res = await fetch('/api/auth/me', { 
       credentials: 'include',
       headers: sessionId ? { 'x-session-id': sessionId } : {}
     })
-    console.log('me response:', res.status)
     const json = await res.json()
-    console.log('me data:', json)
     setUser(json.user)
     if (json.user && !json.user.hasCompletedOnboarding) {
       setShowOnboarding(true)
@@ -89,6 +84,7 @@ function OnboardingModal({ user, onClose }: { user: User; onClose: () => void })
   const [likes, setLikes] = useState<{ tmdbId: number; mediaType: string; title: string }[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
+  const sessionId = typeof localStorage !== 'undefined' ? localStorage.getItem('sessionId') : null
 
   const services = [
     { id: '8', name: 'Netflix' },
@@ -132,7 +128,11 @@ function OnboardingModal({ user, onClose }: { user: User; onClose: () => void })
   const savePreferences = async () => {
     await fetch('/api/preferences', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sessionId ? { 'x-session-id': sessionId } : {})
+      },
+      credentials: 'include',
       body: JSON.stringify({ streamingServices, genres, likes }),
     })
     onClose()
@@ -280,11 +280,19 @@ export function Header() {
               <>
                 <Link href="/browse">Browse</Link>
                 <Link href="/watchlist">Watchlist</Link>
+                <Link href="/groups">Groups</Link>
                 <Link href="/preferences">Preferences</Link>
                 <button onClick={logout} className="btn-secondary">Logout</button>
               </>
             ) : (
-              <Link href="/login" className="btn-primary">Login</Link>
+              <Link href="/login" style={{ 
+          padding: '8px 20px',
+          backgroundColor: '#21262d',
+          color: '#f0f6fc',
+          border: '1px solid #30363d',
+          borderRadius: '6px',
+          textDecoration: 'none'
+        }}>Login</Link>
             )}
           </nav>
         </div>
@@ -303,6 +311,10 @@ export function Header() {
             <Link href="/watchlist" className={pathname === '/watchlist' ? 'active' : ''}>
               <span className="mobile-nav-icon">📋</span>
               <span>Watchlist</span>
+            </Link>
+            <Link href="/groups" className={pathname === '/groups' || pathname.startsWith('/groups/') ? 'active' : ''}>
+              <span className="mobile-nav-icon">👥</span>
+              <span>Groups</span>
             </Link>
             <Link href="/preferences" className={pathname === '/preferences' ? 'active' : ''}>
               <span className="mobile-nav-icon">⚙️</span>

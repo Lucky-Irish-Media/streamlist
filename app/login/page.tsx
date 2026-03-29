@@ -46,6 +46,8 @@ export default function LoginPage() {
             placeholder="Enter your username"
             required
             minLength={2}
+            pattern="[a-zA-Z0-9_-]+"
+            title="Only letters, numbers, dashes, and underscores are allowed"
           />
         </div>
         <div className="form-group">

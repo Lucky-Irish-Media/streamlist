@@ -45,12 +45,13 @@ button {
 }
 
 .btn-primary {
-  background-color: var(--accent);
-  color: var(--bg-primary);
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--accent-hover);
+  background-color: var(--border) !important;
 }
 
 .btn-secondary {
@@ -118,6 +119,26 @@ input:focus, textarea:focus {
 
 .nav a:hover, .nav a.active {
   color: var(--text-primary);
+}
+
+.nav .btn-primary {
+  padding: 8px 20px;
+  font-size: 14px;
+}
+
+.btn-hero {
+  background-color: var(--accent);
+  color: var(--bg-primary);
+  padding: 14px 36px;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.btn-hero:hover {
+  background-color: var(--accent-hover);
+  text-decoration: none;
 }
 
 .mobile-menu-btn {
@@ -512,19 +533,21 @@ input:focus, textarea:focus {
 
 .card-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .icon-btn {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
-  flex: 1;
+  min-width: 36px;
 }
 
 .icon-btn:hover {
@@ -624,4 +647,140 @@ input:focus, textarea:focus {
 .provider-empty {
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-image {
+  width: 100%;
+  aspect-ratio: 2/3;
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+.skeleton-text {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 80%;
+  margin-bottom: 8px;
+}
+
+.skeleton-meta {
+  height: 14px;
+  width: 60%;
+}
+
+.skeleton-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.skeleton-button {
+  flex: 1;
+  height: 32px;
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.error-boundary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.error-boundary-content {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.error-boundary h2 {
+  margin-bottom: 16px;
+  font-size: 24px;
+}
+
+.error-boundary p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.error-digest {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin-top: -16px;
+  margin-bottom: 24px;
+}
+
+.error-boundary button {
+  background-color: var(--accent);
+  color: var(--bg-primary);
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.error-boundary button:hover {
+  background-color: var(--accent-hover);
+}
+
+.search-history-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 4px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.search-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.search-history-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.search-history-item:hover {
+  background-color: var(--bg-tertiary);
 }

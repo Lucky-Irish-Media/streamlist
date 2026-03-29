@@ -32,6 +32,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Username must be at least 2 characters' }, { status: 400 })
     }
 
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return NextResponse.json({ error: 'Username can only contain letters, numbers, dashes, and underscores' }, { status: 400 })
+    }
+
     const expectedCode = (env as any)?.ACCESS_CODE
     if (expectedCode && accessCode !== expectedCode) {
       return NextResponse.json({ error: 'Invalid access code' }, { status: 403 })

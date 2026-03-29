@@ -138,6 +138,36 @@ const tools = {
       required: ['tmdb_id'],
     },
   },
+  list_groups: {
+    name: 'list_groups',
+    description: 'Get all groups the user is a member of',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  create_group: {
+    name: 'create_group',
+    description: 'Create a new group for sharing watchlists',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'The name of the group to create' },
+      },
+      required: ['name'],
+    },
+  },
+  get_group_watchlist: {
+    name: 'get_group_watchlist',
+    description: 'Get the group watchlist with intersection and recommendations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group_id: { type: 'string', description: 'The ID of the group' },
+      },
+      required: ['group_id'],
+    },
+  },
 }
 
 async function handleGetWatchlist(): Promise<{ content: Array<{ type: string; text: string }> }> {
@@ -369,6 +399,154 @@ async function handleRemoveLike(tmdbId: number): Promise<{ content: Array<{ type
   }
 }
 
+async function handleListGroups(): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const memberships = await database
+    .select()
+    .from(schema.userGroupMembers)
+    .innerJoin(schema.userGroups, eq(schema.userGroupMembers.groupId, schema.userGroups.id))
+    .where(eq(schema.userGroupMembers.userId, ctx.userId))
+    .all()
+
+  const groups = await Promise.all(
+    memberships.map(async (m) => {
+      const members = await database
+        .select()
+        .from(schema.userGroupMembers)
+        .where(eq(schema.userGroupMembers.groupId, m.user_groups.id))
+        .all()
+      return {
+        id: m.user_groups.id,
+        name: m.user_groups.name,
+        createdAt: m.user_groups.createdAt,
+        createdBy: m.user_groups.createdBy,
+        memberCount: members.length,
+      }
+    })
+  )
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ groups }) }],
+  }
+}
+
+async function handleCreateGroup(name: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+  const { nanoid } = await import('nanoid')
+
+  const groupId = nanoid(16)
+
+  await database.insert(schema.userGroups).values({
+    id: groupId,
+    name,
+    createdBy: ctx.userId,
+  }).run()
+
+  await database.insert(schema.userGroupMembers).values({
+    groupId,
+    userId: ctx.userId,
+  }).run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, group: { id: groupId, name } }) }],
+  }
+}
+
+async function handleGetGroupWatchlist(groupId: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const membership = await database
+    .select()
+    .from(schema.userGroupMembers)
+    .where(and(eq(schema.userGroupMembers.groupId, groupId), eq(schema.userGroupMembers.userId, ctx.userId)))
+    .get()
+
+  if (!membership) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ error: 'Not a member of this group' }) }],
+    }
+  }
+
+  const members = await database
+    .select()
+    .from(schema.userGroupMembers)
+    .where(eq(schema.userGroupMembers.groupId, groupId))
+    .all()
+
+  const userIds = members.map(m => m.userId)
+  const threshold = Math.ceil(userIds.length * 0.5)
+
+  const allWatchlists: Map<string, { tmdbId: number; mediaType: string }[]> = new Map()
+  const excludedIds: Set<number> = new Set()
+  const genreCounts: Map<number, number> = new Map()
+  const serviceCounts: Map<string, number> = new Map()
+
+  for (const uid of userIds) {
+    const watchlist = await database
+      .select()
+      .from(schema.watchlist)
+      .where(eq(schema.watchlist.userId, uid))
+      .all()
+    allWatchlists.set(uid, watchlist.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })))
+
+    const likes = await database.select().from(schema.userLikes).where(eq(schema.userLikes.userId, uid)).all()
+    likes.forEach(l => excludedIds.add(l.tmdbId))
+
+    const watched = await database.select().from(schema.watched).where(eq(schema.watched.userId, uid)).all()
+    watched.forEach(w => excludedIds.add(w.tmdbId))
+
+    const genres = await database.select().from(schema.userGenres).where(eq(schema.userGenres.userId, uid)).all()
+    genres.forEach(g => {
+      genreCounts.set(g.genreId, (genreCounts.get(g.genreId) || 0) + 1)
+    })
+
+    const services = await database
+      .select()
+      .from(schema.userStreamingServices)
+      .where(eq(schema.userStreamingServices.userId, uid))
+      .all()
+    services.forEach(s => {
+      serviceCounts.set(s.serviceId, (serviceCounts.get(s.serviceId) || 0) + 1)
+    })
+  }
+
+  const commonGenres: number[] = []
+  genreCounts.forEach((count, genreId) => {
+    if (count >= threshold) commonGenres.push(genreId)
+  })
+
+  const watchlistArrays = Array.from(allWatchlists.values())
+  const intersection: { tmdbId: number; mediaType: string }[] = []
+
+  if (watchlistArrays.length > 0 && watchlistArrays[0].length > 0) {
+    for (const item of watchlistArrays[0]) {
+      const inAllLists = watchlistArrays.every(list =>
+        list.some(w => w.tmdbId === item.tmdbId && w.mediaType === item.mediaType)
+      )
+      if (inAllLists) {
+        intersection.push(item)
+        excludedIds.add(item.tmdbId)
+      }
+    }
+  }
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        intersection,
+        commonGenres,
+        memberCount: members.length,
+        threshold,
+      }),
+    }],
+  }
+}
+
 export const server = new Server(
   {
     name: 'streamlist-mcp-server',
@@ -410,6 +588,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await handleAddLike(args.tmdb_id as number, args.media_type as string, args.title as string)
       case 'remove_like':
         return await handleRemoveLike(args.tmdb_id as number)
+      case 'list_groups':
+        return await handleListGroups()
+      case 'create_group':
+        return await handleCreateGroup(args.name as string)
+      case 'get_group_watchlist':
+        return await handleGetGroupWatchlist(args.group_id as string)
       default:
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${name}` }) }],

@@ -7,4 +7,5 @@ export default {
   dbCredentials: {
     url: 'file:local.db',
   },
+  schemaFilter: ['public'],
 } satisfies Config

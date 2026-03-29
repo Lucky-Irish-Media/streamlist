@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "deploy": "npx @cloudflare/next-on-pages",
+    "deploy": "npx @cloudflare/next-on-pages && npx wrangler pages deploy .vercel/output/static",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },

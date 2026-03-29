@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
-import { drizzle } from 'drizzle-orm/d1'
 import { eq, and } from 'drizzle-orm'
-import * as schema from '@/db/schema'
+import { getDB, schema, type DB } from '@/lib/db'
 import {
   searchMulti,
   getMovieDetails,
@@ -54,7 +53,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>
 }
 
-async function getUserByApiKey(db: ReturnType<typeof drizzle>, apiKey: string): Promise<string | null> {
+async function getUserByApiKey(db: DB, apiKey: string): Promise<string | null> {
   const user = await db
     .select()
     .from(schema.users)
@@ -63,7 +62,7 @@ async function getUserByApiKey(db: ReturnType<typeof drizzle>, apiKey: string): 
   return user?.id ?? null
 }
 
-async function getUserPreferences(db: ReturnType<typeof drizzle>, userId: string) {
+async function getUserPreferences(db: DB, userId: string) {
   const user = await db
     .select()
     .from(schema.users)
@@ -103,7 +102,7 @@ async function getUserPreferences(db: ReturnType<typeof drizzle>, userId: string
   }
 }
 
-async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolName: string, args?: Record<string, unknown>) {
+async function handleTool(db: DB, userId: string, toolName: string, args?: Record<string, unknown>) {
   switch (toolName) {
     case 'get_watchlist': {
       const items = await db
@@ -479,7 +478,7 @@ async function handleTool(db: ReturnType<typeof drizzle>, userId: string, toolNa
 export async function POST(req: NextRequest) {
   const { env } = getRequestContext()
   const dbEnv = { DB: (env as any)?.DB }
-  const db = drizzle(dbEnv, { schema })
+  const db = getDB(dbEnv)
 
   const apiKey = req.headers.get('x-api-key')
   if (!apiKey) {

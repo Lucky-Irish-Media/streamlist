@@ -30,6 +30,16 @@ export async function getSessionUser(env: { DB?: D1Database }, sessionId: string
   return result?.users.id ?? null
 }
 
+export async function getUserByApiKey(env: { DB?: D1Database }, apiKey: string): Promise<string | null> {
+  const db = getDB(env)
+  const user = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.apiKey, apiKey))
+    .get()
+  return user?.id ?? null
+}
+
 export async function deleteSession(env: { DB?: D1Database }, sessionId: string): Promise<void> {
   const db = getDB(env)
   await db.delete(schema.sessions).where(eq(schema.sessions.id, sessionId)).run()

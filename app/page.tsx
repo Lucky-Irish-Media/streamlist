@@ -4,28 +4,26 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
+import { SkeletonGrid } from '@/components/Skeleton'
+import type { RecommendationsData, MediaItem } from '@/types/media'
 
 function HomeContent() {
   const { user } = useUser()
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<RecommendationsData | null>(null)
 
   useEffect(() => {
-    console.log('HomeContent user:', user)
     if (user) {
-      console.log('Fetching recommendations')
       const sessionId = localStorage.getItem('sessionId')
       fetch('/api/recommendations', {
         headers: sessionId ? { 'x-session-id': sessionId } : {}
       })
         .then(res => res.json())
         .then(data => {
-          console.log('recommendations data:', data)
           setData(data)
         })
         .finally(() => setLoading(false))
     } else {
-      console.log('No user, not fetching recommendations')
       setLoading(false)
     }
   }, [user])
@@ -35,7 +33,7 @@ function HomeContent() {
       <div className="hero">
         <h1>Your Personal Watchlist</h1>
         <p>Discover movies and TV shows from your favorite streaming services</p>
-        <Link href="/login" className="btn-primary" style={{ padding: '12px 32px', fontSize: '18px' }}>
+        <Link href="/login" className="btn-hero">
           Get Started
         </Link>
       </div>
@@ -43,18 +41,27 @@ function HomeContent() {
   }
 
   if (loading) {
-    return <div className="loading">Loading...</div>
+    return (
+      <main className="container" style={{ paddingTop: '32px' }}>
+        <section className="section">
+          <SkeletonGrid count={5} />
+        </section>
+        <section className="section">
+          <SkeletonGrid count={5} />
+        </section>
+      </main>
+    )
   }
 
   return (
     <>
-      {data?.recommendations?.length > 0 && (
+      {data?.recommendations && data.recommendations.length > 0 && (
         <section className="section">
           <div className="section-header">
             <h2 className="section-title">Recommended for You</h2>
           </div>
           <div className="grid grid-5">
-            {data.recommendations.slice(0, 10).map((item: any) => (
+            {data.recommendations.slice(0, 10).map((item: MediaItem) => (
               <MediaCard key={item.id} item={item} />
             ))}
           </div>
@@ -67,7 +74,7 @@ function HomeContent() {
           <Link href="/browse?tab=trending" className="btn-secondary">View All</Link>
         </div>
         <div className="grid grid-5">
-          {data?.trending?.slice(0, 5).map((item: any) => (
+          {data?.trending?.slice(0, 5).map((item: MediaItem) => (
             <MediaCard key={item.id} item={item} />
           ))}
         </div>
@@ -79,7 +86,7 @@ function HomeContent() {
           <Link href="/browse?tab=movies" className="btn-secondary">View All</Link>
         </div>
         <div className="grid grid-5">
-          {data?.movies?.slice(0, 5).map((item: any) => (
+          {data?.movies?.slice(0, 5).map((item: MediaItem) => (
             <MediaCard key={item.id} item={item} />
           ))}
         </div>
@@ -91,7 +98,7 @@ function HomeContent() {
           <Link href="/browse?tab=tv" className="btn-secondary">View All</Link>
         </div>
         <div className="grid grid-5">
-          {data?.tv?.slice(0, 5).map((item: any) => (
+          {data?.tv?.slice(0, 5).map((item: MediaItem) => (
             <MediaCard key={item.id} item={item} />
           ))}
         </div>
@@ -102,7 +109,7 @@ function HomeContent() {
           <h2 className="section-title">New Releases - Movies</h2>
         </div>
         <div className="grid grid-5">
-          {data?.newReleases?.movies?.slice(0, 5).map((item: any) => (
+          {data?.newReleases?.movies?.slice(0, 5).map((item: MediaItem) => (
             <MediaCard key={item.id} item={item} />
           ))}
         </div>
@@ -113,7 +120,7 @@ function HomeContent() {
           <h2 className="section-title">New Releases - TV Shows</h2>
         </div>
         <div className="grid grid-5">
-          {data?.newReleases?.tv?.slice(0, 5).map((item: any) => (
+          {data?.newReleases?.tv?.slice(0, 5).map((item: MediaItem) => (
             <MediaCard key={item.id} item={item} />
           ))}
         </div>

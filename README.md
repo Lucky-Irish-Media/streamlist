@@ -4,11 +4,13 @@ A personal watchlist app for discovering and tracking movies and TV shows. Built
 
 ## Features
 
-- **Browse**: Discover trending, popular, and new release movies and TV shows
+- **Browse**: Discover trending, popular, and new release movies and TV shows with filtering and sorting
 - **Watchlist**: Add and manage your personal watchlist
+- **Watch History**: Track movies and shows you've watched
 - **Recommendations**: Get personalized recommendations based on your preferences
-- **Preferences**: Configure your favorite streaming services, genres, and region
-- **Search**: Find movies and TV shows by name
+- **Preferences**: Configure your favorite streaming services, genres, region, and likes
+- **Search**: Find movies and TV shows by name with search history
+- **Groups**: Create groups, invite friends, share watchlists, and run polls to decide what to watch
 
 ## Tech Stack
 
@@ -122,6 +124,13 @@ StreamList includes an MCP (Model Context Protocol) server that allows external 
 | `get_watch_history` | List all watched movies/shows |
 | `mark_as_watched` | Mark as watched (`tmdb_id`, `media_type`, `title`) |
 | `remove_from_watch_history` | Remove from watch history (`tmdb_id`) |
+
+#### Groups (via MCP)
+| Tool | Description |
+|------|-------------|
+| `get_groups` | List all your groups |
+| `create_group` | Create a new group (`name`) |
+| `get_group_watchlist` | Get group watchlist with recommendations (`group_id`) |
 
 #### Preferences
 | Tool | Description |
@@ -249,15 +258,49 @@ Or use an MCP client like `mcp-client` to make requests programmatically.
 streamlist/
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes
+│   │   ├── auth/          # Authentication (login, logout, me, api-key)
+│   │   ├── groups/        # Group management and polls
+│   │   ├── mcp/           # MCP server endpoint
+│   │   ├── preferences/   # User preferences
+│   │   ├── watchlist/     # Watchlist management
+│   │   └── ...
+│   ├── groups/            # Groups pages
 │   ├── login/             # Login page
-│   ├── preferences/       # User preferences
+│   ├── preferences/       # User preferences page
 │   ├── watchlist/         # Watchlist page
-│   └── browse/            # Browse page
-├── components/            # React components
-├── db/                    # Database schema
+│   ├── browse/            # Browse/discover page
+│   └── globals.css        # Global styles
+├── components/            # React components (MediaCard, UserContext, etc.)
+├── db/                    # Database schema and migrations
 ├── lib/                   # Utilities (auth, db, tmdb, mcp)
+├── types/                 # TypeScript type definitions
 └── public/                # Static assets
 ```
+
+## Groups
+
+StreamList supports collaborative groups where members can share watchlists and run polls.
+
+### Creating a Group
+
+1. Log in to your account
+2. Navigate to **Groups**
+3. Click **Create Group** and enter a name
+4. Share the invite link with friends
+
+### Group Features
+
+| Feature | Description |
+|---------|-------------|
+| **Shared Watchlist** | Group members can add/remove items from the group watchlist |
+| **Polls** | Create polls to vote on what to watch next |
+| **Invite Links** | Generate unique invite links that expire after 7 days |
+
+### Group Permissions
+
+- Only group members can view the group watchlist
+- Only group members can create polls
+- All members can vote on active polls
 
 ## License
 
