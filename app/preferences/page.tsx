@@ -41,6 +41,7 @@ const countries = [
   { code: 'JP', name: 'Japan' },
   { code: 'MX', name: 'Mexico' },
   { code: 'KR', name: 'South Korea' },
+  { code: 'PT', name: 'Portugal' },
 ]
 
 export default function PreferencesPage() {
