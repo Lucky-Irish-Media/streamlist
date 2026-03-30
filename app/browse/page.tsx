@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import MediaCard from '@/components/MediaCard'
 import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
@@ -38,8 +39,10 @@ function clearSearchHistory() {
   localStorage.removeItem(SEARCH_HISTORY_KEY)
 }
 
-export default function BrowsePage() {
-  const [tab, setTab] = useState<Tab>('trending')
+function BrowsePageContent() {
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab') as Tab | null
+  const [tab, setTab] = useState<Tab>(initialTab || 'trending')
   const [sortBy, setSortBy] = useState<SortOption>('popularity')
   const [items, setItems] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -250,5 +253,13 @@ export default function BrowsePage() {
         />
       )}
     </main>
+  )
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={<main className="container" style={{ paddingTop: '32px' }}><div className="grid grid-5">{Array.from({ length: 10 }).map((_, i) => <div key={i} style={{ aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: '8px' }} />)}</div></main>}>
+      <BrowsePageContent />
+    </Suspense>
   )
 }
