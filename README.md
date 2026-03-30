@@ -8,7 +8,7 @@ A personal watchlist app for discovering and tracking movies and TV shows. Built
 - **Watchlist**: Add and manage your personal watchlist
 - **Watch History**: Track movies and shows you've watched
 - **Recommendations**: Get personalized recommendations based on your preferences
-- **Preferences**: Configure your favorite streaming services, genres, region, and likes
+- **Preferences**: Configure your favorite streaming services, genres, regions, and likes
 - **Search**: Find movies and TV shows by name with search history
 - **Groups**: Create groups, invite friends, share watchlists, and run polls to decide what to watch
 
@@ -135,10 +135,10 @@ StreamList includes an MCP (Model Context Protocol) server that allows external 
 #### Preferences
 | Tool | Description |
 |------|-------------|
-| `get_preferences` | Get streaming services, genres, likes, and country |
+| `get_preferences` | Get streaming services, genres, likes, and countries |
 | `update_streaming_services` | Set streaming services (`services` array) |
 | `update_genres` | Set preferred genres (`genres` array) |
-| `update_country` | Set country code (`country`) |
+| `update_country` | Set country codes (`countries` array, e.g., `["US", "PT"]`) |
 | `add_like` | Like a movie/show (`tmdb_id`, `media_type`, `title`) |
 | `remove_like` | Unlike a movie/show (`tmdb_id`) |
 
@@ -149,7 +149,7 @@ StreamList includes an MCP (Model Context Protocol) server that allows external 
 | `get_trending` | Get trending movies/shows (`media_type`, `page`) |
 | `search_media` | Search for movies/shows (`query`, `page`) |
 | `get_media_details` | Get full details of a movie/show (`tmdb_id`, `media_type`) |
-| `get_watch_providers` | Get streaming providers in your country (`tmdb_id`, `media_type`) |
+| `get_watch_providers` | Get streaming providers in your regions (`tmdb_id`, `media_type`) |
 
 ### API Usage
 
