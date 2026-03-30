@@ -107,7 +107,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const inAllLists = watchlistArrays.every(list =>
         list.some(w => w.tmdbId === item.tmdbId && w.mediaType === item.mediaType)
       )
-      if (inAllLists) {
+      if (inAllLists && !allWatched.has(item.tmdbId)) {
         intersection.push(item)
       }
     }
