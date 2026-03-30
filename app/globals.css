@@ -660,6 +660,11 @@ input:focus, textarea:focus {
   color: var(--text-primary);
 }
 
+.provider-regions {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .provider-empty {
   color: var(--text-secondary);
   font-size: 14px;

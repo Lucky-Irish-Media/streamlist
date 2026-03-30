@@ -8,7 +8,7 @@ import { Home, Search, List, Users, Settings } from 'lucide-react'
 interface User {
   id: string
   username: string
-  country: string
+  countries: string[]
   streamingServices: string[]
   genres: number[]
   likes: { tmdbId: number; mediaType: string; title: string }[]

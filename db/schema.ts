@@ -4,7 +4,7 @@ export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   username: text('username').notNull().unique(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  country: text('country').notNull().$defaultFn(() => 'US'),
+  countries: text('countries').notNull().$defaultFn(() => '["US"]'),
   apiKey: text('api_key'),
 })
 

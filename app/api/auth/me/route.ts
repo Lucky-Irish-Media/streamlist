@@ -48,12 +48,14 @@ export async function GET(req: NextRequest) {
 
   const hasCompletedOnboarding = streamingServices.length > 0 || genres.length > 0
 
+  const countries = user?.countries ? JSON.parse(user.countries) : ['US']
+
   return NextResponse.json({
     user: user ? {
       id: user.id,
       username: user.username,
       createdAt: user.createdAt,
-      country: user.country || 'US',
+      countries,
       streamingServices: streamingServices.map(s => s.serviceId),
       genres: genres.map(g => g.genreId),
       likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),

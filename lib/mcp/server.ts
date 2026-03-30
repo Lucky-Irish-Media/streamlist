@@ -75,7 +75,7 @@ const tools = {
   },
   get_preferences: {
     name: 'get_preferences',
-    description: 'Get user preferences including streaming services, genres, likes, and country',
+    description: 'Get user preferences including streaming services, genres, likes, and countries',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -105,13 +105,13 @@ const tools = {
   },
   update_country: {
     name: 'update_country',
-    description: 'Update the user\'s country preference',
+    description: 'Update the user\'s country preferences',
     inputSchema: {
       type: 'object',
       properties: {
-        country: { type: 'string', description: 'Country code (e.g., "US", "GB", "CA")' },
+        countries: { type: 'array', items: { type: 'string' }, description: 'Array of country codes (e.g., ["US", "GB", "CA"])' },
       },
-      required: ['country'],
+      required: ['countries'],
     },
   },
   add_like: {
@@ -273,11 +273,13 @@ async function handleGetPreferences(): Promise<{ content: Array<{ type: string; 
     .where(eq(schema.userLikes.userId, ctx.userId))
     .all()
 
+  const countries = user?.countries ? JSON.parse(user.countries) : ['US']
+
   return {
     content: [{
       type: 'text',
       text: JSON.stringify({
-        country: user.country,
+        countries,
         streamingServices: streamingServices.map(s => s.serviceId),
         genres: genres.map(g => g.genreId),
         likes: likes.map(l => ({
@@ -332,18 +334,18 @@ async function handleUpdateGenres(genres: number[]): Promise<{ content: Array<{ 
   }
 }
 
-async function handleUpdateCountry(country: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+async function handleUpdateCountry(countries: string[]): Promise<{ content: Array<{ type: string; text: string }> }> {
   const ctx = getContext()
   const database = getDb(ctx.env)
 
   await database
     .update(schema.users)
-    .set({ country })
+    .set({ countries: JSON.stringify(countries) })
     .where(eq(schema.users.id, ctx.userId))
     .run()
 
   return {
-    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Country updated' }) }],
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Countries updated' }) }],
   }
 }
 
@@ -583,7 +585,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'update_genres':
         return await handleUpdateGenres(args.genres as number[])
       case 'update_country':
-        return await handleUpdateCountry(args.country as string)
+        return await handleUpdateCountry(args.countries as string[])
       case 'add_like':
         return await handleAddLike(args.tmdb_id as number, args.media_type as string, args.title as string)
       case 'remove_like':

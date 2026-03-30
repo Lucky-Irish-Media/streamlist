@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
   }
 
-  const { streamingServices, genres, likes, addLike, removeLike, country } = await req.json()
+  const { streamingServices, genres, likes, addLike, removeLike, countries } = await req.json()
   const db = getDB(dbEnv)
 
   if (addLike) {
@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (country !== undefined) {
-    await db.update(schema.users).set({ country }).where(eq(schema.users.id, userId)).run()
+  if (countries !== undefined) {
+    await db.update(schema.users).set({ countries: JSON.stringify(countries) }).where(eq(schema.users.id, userId)).run()
   }
 
   return NextResponse.json({ success: true })

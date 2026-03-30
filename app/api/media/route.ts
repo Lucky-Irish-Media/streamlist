@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const tmdbId = searchParams.get('id')
   const mediaType = searchParams.get('type')
-  const country = searchParams.get('country') || 'US'
+  const countriesParam = searchParams.get('countries') || 'US'
+  const countries = countriesParam.split(',')
 
   if (!tmdbId || !mediaType) {
     return NextResponse.json({ error: 'Missing id or type' }, { status: 400 })
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
     const [item, providers, certification, videos] = await Promise.all([
       detailsPromise,
       providersPromise,
-      getCertification(mediaType, id, country),
+      getCertification(mediaType, id, countries[0]),
       videosPromise
     ])
 
@@ -69,8 +70,25 @@ export async function GET(req: NextRequest) {
     )
     const trailerKey = trailer?.key || null
 
-    const countryData = providers.results?.[country]
-    const flatrate = countryData?.flatrate || []
+    const providerMap = new Map<number, { provider_id: number; provider_name: string; regions: string[] }>()
+
+    for (const country of countries) {
+      const countryData = providers.results?.[country]
+      const flatrate = countryData?.flatrate || []
+      for (const p of flatrate) {
+        if (providerMap.has(p.provider_id)) {
+          providerMap.get(p.provider_id)!.regions.push(country)
+        } else {
+          providerMap.set(p.provider_id, {
+            provider_id: p.provider_id,
+            provider_name: p.provider_name,
+            regions: [country],
+          })
+        }
+      }
+    }
+
+    const flatrate = Array.from(providerMap.values())
 
     return NextResponse.json({
       ...item,
@@ -79,11 +97,8 @@ export async function GET(req: NextRequest) {
       certification,
       trailerKey,
       watchProviders: {
-        country,
-        flatrate: flatrate.map(p => ({
-          provider_id: p.provider_id,
-          provider_name: p.provider_name,
-        })),
+        countries,
+        flatrate,
       },
     })
   } catch (error) {

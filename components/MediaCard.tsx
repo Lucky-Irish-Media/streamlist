@@ -87,8 +87,8 @@ export default function MediaCard({ item }: MediaCardProps) {
   }, [item.id, mediaType])
 
   useEffect(() => {
-    const country = user?.country || 'US'
-    fetch(`/api/media?id=${item.id}&type=${mediaType}&country=${country}`)
+    const countries = user?.countries?.join(',') || 'US'
+    fetch(`/api/media?id=${item.id}&type=${mediaType}&countries=${countries}`)
       .then(res => res.json())
       .then(data => {
         if (data.certification) {
@@ -96,14 +96,14 @@ export default function MediaCard({ item }: MediaCardProps) {
         }
       })
       .catch(() => {})
-  }, [item.id, mediaType, user?.country])
+  }, [item.id, mediaType, user?.countries])
 
   const openModal = async () => {
     if (showModal) return
     setLoadingDetails(true)
     try {
-      const country = user?.country || 'US'
-      const res = await fetch(`/api/media?id=${item.id}&type=${mediaType}&country=${country}`)
+      const countries = user?.countries?.join(',') || 'US'
+      const res = await fetch(`/api/media?id=${item.id}&type=${mediaType}&countries=${countries}`)
       const data = await res.json()
       setDetails(data)
     } catch (err) {
@@ -383,11 +383,18 @@ export default function MediaCard({ item }: MediaCardProps) {
                     {(details as any).watchProviders.flatrate.length > 0 ? (
                       <div className="provider-pills">
                         {(details as any).watchProviders.flatrate.map((p: any) => (
-                          <span key={p.provider_id} className="provider-pill">{p.provider_name}</span>
+                          <span key={p.provider_id} className="provider-pill">
+                            {p.provider_name}
+                            {p.regions && p.regions.length > 0 && (
+                              <span className="provider-regions">
+                                {' '}[{p.regions.join(', ')}]
+                              </span>
+                            )}
+                          </span>
                         ))}
                       </div>
                     ) : (
-                      <p className="provider-empty">Not available for streaming in {(details as any).watchProviders.country}</p>
+                      <p className="provider-empty">Not available for streaming in your selected regions</p>
                     )}
                   </div>
                 )}

@@ -95,6 +95,26 @@ export default function PreferencesPage() {
     savePreferences({ genres: updated })
   }
 
+  const toggleCountry = (code: string) => {
+    const current = user.countries || ['US']
+    const updated = current.includes(code)
+      ? current.filter(c => c !== code)
+      : [...current, code]
+    if (updated.length === 0) return
+    savePreferences({ countries: updated })
+  }
+
+  const getUserCountries = () => {
+    if (!user.countries) return ['US']
+    if (Array.isArray(user.countries)) return user.countries
+    try {
+      const parsed = JSON.parse(user.countries)
+      return Array.isArray(parsed) ? parsed : ['US']
+    } catch {
+      return ['US']
+    }
+  }
+
   const removeLike = async (tmdbId: number, mediaType: string) => {
     const sessionId = localStorage.getItem('sessionId')
     setSaving(true)
@@ -184,29 +204,22 @@ export default function PreferencesPage() {
       </div>
 
       <div className="section">
-        <h2 className="section-title" style={{ marginBottom: '16px' }}>Region</h2>
+        <h2 className="section-title" style={{ marginBottom: '16px' }}>Regions</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '14px' }}>
-          Used to show streaming availability for your country
+          Used to show streaming availability in your selected regions
         </p>
-        <select
-          value={user.country || 'US'}
-          onChange={e => !saving && savePreferences({ country: e.target.value })}
-          disabled={saving}
-          style={{
-            padding: '10px 14px',
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            color: 'var(--text-primary)',
-            fontSize: '14px',
-            cursor: saving ? 'wait' : 'pointer',
-            minWidth: '200px',
-          }}
-        >
+        <div className="checkbox-group">
           {countries.map(c => (
-            <option key={c.code} value={c.code}>{c.name}</option>
+            <span
+              key={c.code}
+              className={`checkbox-item ${getUserCountries().includes(c.code) ? 'selected' : ''}`}
+              onClick={() => !saving && toggleCountry(c.code)}
+              style={{ cursor: saving ? 'wait' : 'pointer' }}
+            >
+              {c.name}
+            </span>
           ))}
-        </select>
+        </div>
       </div>
 
       <div className="section">

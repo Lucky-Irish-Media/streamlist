@@ -93,8 +93,10 @@ async function getUserPreferences(db: DB, userId: string) {
     .where(eq(schema.watchlist.userId, userId))
     .all()
 
+  const countries = user?.countries ? JSON.parse(user.countries) : ['US']
+
   return {
-    country: user?.country || 'US',
+    countries,
     streamingServices: streamingServices.map(s => s.serviceId),
     genres: genres.map(g => g.genreId),
     likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
@@ -171,8 +173,9 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
         .from(schema.userLikes)
         .where(eq(schema.userLikes.userId, userId))
         .all()
+      const countries = user?.countries ? JSON.parse(user.countries) : ['US']
       return {
-        country: user.country,
+        countries,
         streamingServices: streamingServices.map(s => s.serviceId),
         genres: genres.map(g => g.genreId),
         likes: likes.map(l => ({
@@ -211,13 +214,13 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
       return { success: true, message: 'Genres updated' }
     }
     case 'update_country': {
-      const { country } = args as { country: string }
+      const { countries } = args as { countries: string[] }
       await db
         .update(schema.users)
-        .set({ country })
+        .set({ countries: JSON.stringify(countries) })
         .where(eq(schema.users.id, userId))
         .run()
-      return { success: true, message: 'Country updated' }
+      return { success: true, message: 'Countries updated' }
     }
     case 'add_like': {
       const { tmdb_id, media_type, title } = args as { tmdb_id: number; media_type: string; title: string }
@@ -319,7 +322,7 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
     case 'get_media_details': {
       const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
       const prefs = await getUserPreferences(db, userId)
-      const certification = await getCertification(media_type, tmdb_id, prefs.country)
+      const certification = await getCertification(media_type, tmdb_id, prefs.countries[0])
       if (media_type === 'movie') {
         const details = await getMovieDetails(tmdb_id)
         return {
@@ -457,17 +460,34 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
         providers = await getTVWatchProviders(tmdb_id)
       }
 
-      const countryProviders = providers.results?.[prefs.country]
-      if (!countryProviders?.flatrate) {
-        return { providers: [], message: `No streaming providers found in ${prefs.country}` }
+      const providerMap = new Map<number, { id: number; name: string; logoPath: string; regions: string[] }>()
+
+      for (const country of prefs.countries) {
+        const countryProviders = providers.results?.[country]
+        if (countryProviders?.flatrate) {
+          for (const p of countryProviders.flatrate) {
+            if (providerMap.has(p.provider_id)) {
+              providerMap.get(p.provider_id)!.regions.push(country)
+            } else {
+              providerMap.set(p.provider_id, {
+                id: p.provider_id,
+                name: p.provider_name,
+                logoPath: p.logo_path,
+                regions: [country],
+              })
+            }
+          }
+        }
+      }
+
+      const providerList = Array.from(providerMap.values())
+
+      if (providerList.length === 0) {
+        return { providers: [], message: `No streaming providers found in your selected regions: ${prefs.countries.join(', ')}` }
       }
 
       return {
-        providers: countryProviders.flatrate.map((p: any) => ({
-          id: p.provider_id,
-          name: p.provider_name,
-          logoPath: p.logo_path,
-        })),
+        providers: providerList,
       }
     }
     default:
@@ -544,10 +564,10 @@ export async function GET() {
     { name: 'get_watchlist', description: 'Get all items in the user\'s watchlist', inputSchema: { type: 'object', properties: {} } },
     { name: 'add_to_watchlist', description: 'Add a movie or TV show to the watchlist', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
     { name: 'remove_from_watchlist', description: 'Remove a movie or TV show from the watchlist', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
-    { name: 'get_preferences', description: 'Get user preferences including streaming services, genres, likes, and country', inputSchema: { type: 'object', properties: {} } },
+    { name: 'get_preferences', description: 'Get user preferences including streaming services, genres, likes, and countries', inputSchema: { type: 'object', properties: {} } },
     { name: 'update_streaming_services', description: 'Update the user\'s preferred streaming services', inputSchema: { type: 'object', properties: { services: { type: 'array', items: { type: 'string' } } }, required: ['services'] } },
     { name: 'update_genres', description: 'Update the user\'s preferred genres', inputSchema: { type: 'object', properties: { genres: { type: 'array', items: { type: 'number' } } }, required: ['genres'] } },
-    { name: 'update_country', description: 'Update the user\'s country preference', inputSchema: { type: 'object', properties: { country: { type: 'string' } }, required: ['country'] } },
+    { name: 'update_country', description: 'Update the user\'s country preferences', inputSchema: { type: 'object', properties: { countries: { type: 'array', items: { type: 'string' } } }, required: ['countries'] } },
     { name: 'add_like', description: 'Add a movie or TV show to user\'s liked list', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, title: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'title'] } },
     { name: 'remove_like', description: 'Remove a movie or TV show from user\'s liked list', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
     { name: 'get_watch_history', description: 'Get user\'s watch history (movies/shows marked as watched)', inputSchema: { type: 'object', properties: {} } },
@@ -557,7 +577,7 @@ export async function GET() {
     { name: 'get_media_details', description: 'Get detailed information about a specific movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
     { name: 'get_trending', description: 'Get trending movies or TV shows', inputSchema: { type: 'object', properties: { media_type: { type: 'string', enum: ['all', 'movie', 'tv'] }, page: { type: 'number' } } } },
     { name: 'get_recommendations', description: 'Get personalized recommendations based on user\'s likes and preferences', inputSchema: { type: 'object', properties: {} } },
-    { name: 'get_watch_providers', description: 'Get streaming providers for a movie or TV show in user\'s country', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
+    { name: 'get_watch_providers', description: 'Get streaming providers for a movie or TV show in user\'s countries', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
   ]
 
   return NextResponse.json({
