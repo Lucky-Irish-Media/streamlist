@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@/components/UserContext'
+import { Check, Eye, Heart, Trash2, Plus, FileText, Star } from 'lucide-react'
 
 interface MediaItem {
   id: number
@@ -248,7 +249,7 @@ export default function MediaCard({ item }: MediaCardProps) {
           <div className="card-title">{title}</div>
           <div className="card-meta">
             <span className="badge">{mediaType}</span>
-            <span className="rating">★ {item.vote_average?.toFixed(1)}</span>
+            <span className="rating"><Star size={12} fill="currentColor" /> {item.vote_average?.toFixed(1)}</span>
             <span className="certification">{certification || 'NA'}</span>
           </div>
           <div className="card-actions">
@@ -258,7 +259,7 @@ export default function MediaCard({ item }: MediaCardProps) {
               title={isWatched ? 'Mark as Unwatched' : 'Mark as Watched'}
               disabled={loadingWatched}
             >
-              {isWatched ? '✅' : '👁️'}
+              {isWatched ? <Check size={16} /> : <Eye size={16} />}
             </button>
             <button 
               onClick={toggleLike}
@@ -266,7 +267,7 @@ export default function MediaCard({ item }: MediaCardProps) {
               title={isLiked ? 'Unlike' : 'Add to Liked'}
               disabled={loadingLiked}
             >
-              {isLiked ? '❤️' : '🤍'}
+              {isLiked ? <Heart size={16} fill="currentColor" /> : <Heart size={16} />}
             </button>
             <button 
               onClick={toggleWatchlist}
@@ -274,14 +275,14 @@ export default function MediaCard({ item }: MediaCardProps) {
               title={inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
               disabled={loadingWatchlist}
             >
-              {inWatchlist ? '🗑️' : '➕'}
+              {inWatchlist ? <Trash2 size={16} /> : <Plus size={16} />}
             </button>
             <button 
               onClick={handleViewDetails} 
               className="icon-btn" 
               title="View Details"
             >
-              📄
+              <FileText size={16} />
             </button>
           </div>
         </div>
