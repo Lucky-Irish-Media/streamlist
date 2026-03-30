@@ -33,6 +33,12 @@ export interface StreamingProvider {
   logo_path: string
 }
 
+export interface Provider {
+  provider_id: number
+  provider_name: string
+  logo_path: string
+}
+
 export interface Video {
   id: string
   key: string
@@ -125,6 +131,32 @@ export async function getTVWatchProviders(tvId: number): Promise<{
   return fetchFromTMDB(`/tv/${tvId}/watch/providers`)
 }
 
+export async function getWatchProviders(regions: string[] = ['US']): Promise<Provider[]> {
+  const allProviders: Map<number, Provider> = new Map()
+
+  for (const region of regions) {
+    const [movieRes, tvRes] = await Promise.all([
+      fetchFromTMDB<{ results: Provider[] }>('/watch/providers/movie', { region }),
+      fetchFromTMDB<{ results: Provider[] }>('/watch/providers/tv', { region }),
+    ])
+
+    for (const provider of movieRes.results ?? []) {
+      if (!allProviders.has(provider.provider_id)) {
+        allProviders.set(provider.provider_id, provider)
+      }
+    }
+    for (const provider of tvRes.results ?? []) {
+      if (!allProviders.has(provider.provider_id)) {
+        allProviders.set(provider.provider_id, provider)
+      }
+    }
+  }
+
+  return Array.from(allProviders.values()).sort((a, b) =>
+    a.provider_name.localeCompare(b.provider_name)
+  )
+}
+
 export async function searchMulti(query: string, page = 1): Promise<TMDBResponse> {
   return fetchFromTMDB('/search/multi', { query, page: String(page) })
 }
@@ -163,6 +195,28 @@ export async function getMovieVideos(movieId: number): Promise<{ results: Video[
 
 export async function getTVSeriesVideos(tvId: number): Promise<{ results: Video[] }> {
   return fetchFromTMDB(`/tv/${tvId}/videos`)
+}
+
+export interface CollectionPart {
+  id: number
+  title: string
+  name?: string
+  poster_path: string | null
+  backdrop_path: string | null
+  release_date: string | null
+  vote_average: number
+}
+
+export interface CollectionDetails {
+  id: number
+  name: string
+  poster_path: string | null
+  backdrop_path: string | null
+  parts: CollectionPart[]
+}
+
+export async function getCollectionDetails(collectionId: number): Promise<CollectionDetails> {
+  return fetchFromTMDB(`/collection/${collectionId}`)
 }
 
 export function getImageUrl(path: string | null, size: 'w185' | 'w500' | 'original' = 'w500'): string {

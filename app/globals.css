@@ -343,6 +343,32 @@ input:focus, textarea:focus {
   display: none;
 }
 
+.provider-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.provider-item:hover {
+  border-color: var(--accent);
+}
+
+.provider-item.selected {
+  background-color: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.provider-item.grayed {
+  opacity: 0.5;
+}
+
 .loading {
   display: flex;
   justify-content: center;
@@ -461,6 +487,99 @@ input:focus, textarea:focus {
 
 .close-btn:hover {
   color: var(--text-primary);
+}
+
+.modal-header-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.modal-collection {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+}
+
+.modal-collection h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.collection-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.collection-grid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.collection-grid::-webkit-scrollbar-thumb {
+  background-color: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.collection-item {
+  flex: 0 0 auto;
+  width: 100px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.collection-item:hover {
+  transform: scale(1.05);
+}
+
+.collection-item.current {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.collection-item.current:hover {
+  transform: none;
+}
+
+.collection-item img {
+  width: 100px;
+  border-radius: 8px;
+  aspect-height: 150;
+  object-fit: cover;
+}
+
+.collection-item-title {
+  font-size: 12px;
+  margin-top: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.collection-item-year {
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .add-btn {

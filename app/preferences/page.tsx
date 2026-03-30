@@ -1,16 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useUser } from '@/components/UserContext'
 import { useRouter } from 'next/navigation'
 
-const services = [
-  { id: '8', name: 'Netflix' },
-  { id: '119', name: 'Amazon Prime Video' },
-  { id: '257', name: 'Apple TV+' },
-  { id: '330', name: 'Hulu' },
-  { id: '387', name: 'HBO Max' },
-  { id: '337', name: 'Disney+' },
+const defaultServices = [
+  { id: '8', name: 'Netflix', logo: 'https://image.tmdb.org/t/p/original/gyKiV5zz3R1A22vh5t2t3J9J3u5.png' },
+  { id: '119', name: 'Amazon Prime Video', logo: 'https://image.tmdb.org/t/p/original/68H1O16Hg2zrkcD1p1Q0f2vKk2F.png' },
+  { id: '257', name: 'Apple TV+', logo: 'https://image.tmdb.org/t/p/original/4Z7yA0n2PEX3YKD3VXt2T4J3kHH.png' },
+  { id: '330', name: 'Hulu', logo: 'https://image.tmdb.org/t/p/original/yHZ2W3Ek9D2w1v2D7rT1Bj6g6aG.png' },
+  { id: '387', name: 'HBO Max', logo: 'https://image.tmdb.org/t/p/original/yZBqkV464dCw4qpoXqHZIK3PTHF.png' },
+  { id: '337', name: 'Disney+', logo: 'https://image.tmdb.org/t/p/original/7Q53I7Cl85lX95bK2xT3f4j1B2a.png' },
 ]
 
 const genreList = [
@@ -49,6 +49,50 @@ export default function PreferencesPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [apiKeyLoading, setApiKeyLoading] = useState(false)
+  const [allProviders, setAllProviders] = useState<{ provider_id: number; provider_name: string; logo_path: string }[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [providersLoading, setProvidersLoading] = useState(false)
+
+  const getUserCountries = () => {
+    if (!user?.countries) return ['US']
+    if (Array.isArray(user.countries)) return user.countries
+    try {
+      const parsed = JSON.parse(user.countries)
+      return Array.isArray(parsed) ? parsed : ['US']
+    } catch {
+      return ['US']
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return
+    const fetchProviders = async () => {
+      setProvidersLoading(true)
+      try {
+        const regions = getUserCountries()
+        const res = await fetch(`/api/providers?regions=${regions.join(',')}`)
+        const data = await res.json()
+        if (data.providers) {
+          setAllProviders(data.providers)
+        }
+      } catch (err) {
+        console.error('Failed to fetch providers:', err)
+      } finally {
+        setProvidersLoading(false)
+      }
+    }
+    fetchProviders()
+  }, [user?.countries])
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    const query = searchQuery.toLowerCase()
+    return allProviders.filter(p => 
+      p.provider_name.toLowerCase().includes(query)
+    ).slice(0, 20)
+  }, [searchQuery, allProviders])
+
+  const isSelected = (id: string) => user?.streamingServices?.includes(id)
 
   if (!user) {
     return (
@@ -102,17 +146,6 @@ export default function PreferencesPage() {
       : [...current, code]
     if (updated.length === 0) return
     savePreferences({ countries: updated })
-  }
-
-  const getUserCountries = () => {
-    if (!user.countries) return ['US']
-    if (Array.isArray(user.countries)) return user.countries
-    try {
-      const parsed = JSON.parse(user.countries)
-      return Array.isArray(parsed) ? parsed : ['US']
-    } catch {
-      return ['US']
-    }
   }
 
   const removeLike = async (tmdbId: number, mediaType: string) => {
@@ -189,11 +222,11 @@ export default function PreferencesPage() {
 
       <div className="section">
         <h2 className="section-title" style={{ marginBottom: '16px' }}>Streaming Services</h2>
-        <div className="checkbox-group">
-          {services.map(service => (
+        <div className="checkbox-group" style={{ marginBottom: '16px' }}>
+          {defaultServices.map(service => (
             <span
               key={service.id}
-              className={`checkbox-item ${user.streamingServices?.includes(service.id) ? 'selected' : ''}`}
+              className={`checkbox-item ${isSelected(service.id) ? 'selected' : ''}`}
               onClick={() => !saving && toggleService(service.id)}
               style={{ cursor: saving ? 'wait' : 'pointer' }}
             >
@@ -201,6 +234,62 @@ export default function PreferencesPage() {
             </span>
           ))}
         </div>
+        <div style={{ marginBottom: '12px' }}>
+          <input
+            type="text"
+            placeholder="Search for more services..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            disabled={providersLoading}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              background: 'var(--bg-tertiary)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              fontSize: '14px',
+              outline: 'none',
+            }}
+          />
+        </div>
+        {searchResults.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {searchResults.map(provider => {
+              const providerId = String(provider.provider_id)
+              const selected = isSelected(providerId)
+              return (
+                <span
+                  key={provider.provider_id}
+                  className={`provider-item ${selected ? 'selected grayed' : ''}`}
+                  onClick={() => !saving && !selected && toggleService(providerId)}
+                  style={{ 
+                    cursor: selected ? 'default' : (saving ? 'wait' : 'pointer'),
+                    opacity: selected ? 0.5 : 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                  }}
+                >
+                  {provider.logo_path && (
+                    <img 
+                      src={`https://image.tmdb.org/t/p/w45${provider.logo_path}`}
+                      alt="" 
+                      style={{ width: '24px', height: '24px', borderRadius: '4px' }}
+                    />
+                  )}
+                  {provider.provider_name}
+                </span>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="section">
