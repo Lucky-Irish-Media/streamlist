@@ -548,6 +548,10 @@ input:focus, textarea:focus {
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 36px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn:hover {
