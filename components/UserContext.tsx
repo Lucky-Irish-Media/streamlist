@@ -3,6 +3,7 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Home, Search, List, Users, Settings } from 'lucide-react'
 
 interface User {
   id: string
@@ -301,23 +302,23 @@ export function Header() {
         <nav className="mobile-nav">
           <div className="mobile-nav-links">
             <Link href="/" className={pathname === '/' ? 'active' : ''}>
-              <span className="mobile-nav-icon">🏠</span>
+              <span className="mobile-nav-icon"><Home size={20} /></span>
               <span>Home</span>
             </Link>
             <Link href="/browse" className={pathname === '/browse' ? 'active' : ''}>
-              <span className="mobile-nav-icon">🔍</span>
+              <span className="mobile-nav-icon"><Search size={20} /></span>
               <span>Browse</span>
             </Link>
             <Link href="/watchlist" className={pathname === '/watchlist' ? 'active' : ''}>
-              <span className="mobile-nav-icon">📋</span>
+              <span className="mobile-nav-icon"><List size={20} /></span>
               <span>Watchlist</span>
             </Link>
             <Link href="/groups" className={pathname === '/groups' || pathname.startsWith('/groups/') ? 'active' : ''}>
-              <span className="mobile-nav-icon">👥</span>
+              <span className="mobile-nav-icon"><Users size={20} /></span>
               <span>Groups</span>
             </Link>
             <Link href="/preferences" className={pathname === '/preferences' ? 'active' : ''}>
-              <span className="mobile-nav-icon">⚙️</span>
+              <span className="mobile-nav-icon"><Settings size={20} /></span>
               <span>Prefs</span>
             </Link>
           </div>

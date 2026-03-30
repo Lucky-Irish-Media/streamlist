@@ -9,6 +9,7 @@ import { useUser } from '@/components/UserContext'
 import EmptyState from '@/components/EmptyState'
 import MediaCard from '@/components/MediaCard'
 import { SkeletonGrid } from '@/components/Skeleton'
+import { Lock, User } from 'lucide-react'
 
 interface Member {
   id: number
@@ -277,7 +278,7 @@ export default function GroupPage() {
     return (
       <main className="container" style={{ paddingTop: '32px' }}>
         <EmptyState
-          icon="🔐"
+          icon={Lock}
           title="Login Required"
           description="Please log in to view this group"
           actionText="Login"
@@ -379,7 +380,7 @@ export default function GroupPage() {
         <div>
           {groupData?.members.length === 0 ? (
             <EmptyState
-              icon="👤"
+              icon={User}
               title="No Members"
               description="Invite members to this group"
             />

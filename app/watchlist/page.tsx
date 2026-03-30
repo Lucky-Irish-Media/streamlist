@@ -6,6 +6,7 @@ import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
 import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
+import { Lock, ListPlus } from 'lucide-react'
 import type { WatchlistItem, MediaItem } from '@/types/media'
 
 type SortOption = 'date-added' | 'rating' | 'title' | 'release-date'
@@ -103,7 +104,7 @@ export default function WatchlistPage() {
     return (
       <main className="container" style={{ paddingTop: '32px' }}>
         <EmptyState
-          icon="🔐"
+          icon={Lock}
           title="Login Required"
           description="Please log in to view your watchlist"
           actionText="Login"
@@ -179,7 +180,7 @@ export default function WatchlistPage() {
         <SkeletonGrid count={5} />
       ) : items.length === 0 ? (
         <EmptyState
-          icon="📋"
+          icon={ListPlus}
           title="Your Watchlist is Empty"
           description="Start adding movies and TV shows to keep track of what you want to watch"
           actionText="Start Browsing"

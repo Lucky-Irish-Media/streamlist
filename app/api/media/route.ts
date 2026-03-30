@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings } from '@/lib/tmdb'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos } from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
@@ -43,22 +43,31 @@ export async function GET(req: NextRequest) {
     const id = Number(tmdbId)
     let detailsPromise: ReturnType<typeof getMovieDetails> | ReturnType<typeof getTVDetails>
     let providersPromise: ReturnType<typeof getMovieWatchProviders> | ReturnType<typeof getTVWatchProviders>
+    let videosPromise: ReturnType<typeof getMovieVideos> | ReturnType<typeof getTVSeriesVideos>
 
     if (mediaType === 'movie') {
       detailsPromise = getMovieDetails(id)
       providersPromise = getMovieWatchProviders(id)
+      videosPromise = getMovieVideos(id)
     } else if (mediaType === 'tv') {
       detailsPromise = getTVDetails(id)
       providersPromise = getTVWatchProviders(id)
+      videosPromise = getTVSeriesVideos(id)
     } else {
       return NextResponse.json({ error: 'Invalid media type' }, { status: 400 })
     }
 
-    const [item, providers, certification] = await Promise.all([
+    const [item, providers, certification, videos] = await Promise.all([
       detailsPromise,
       providersPromise,
-      getCertification(mediaType, id, country)
+      getCertification(mediaType, id, country),
+      videosPromise
     ])
+
+    const trailer = videos.results?.find(
+      (v: any) => v.site === 'YouTube' && v.type === 'Trailer'
+    )
+    const trailerKey = trailer?.key || null
 
     const countryData = providers.results?.[country]
     const flatrate = countryData?.flatrate || []
@@ -68,6 +77,7 @@ export async function GET(req: NextRequest) {
       media_type: mediaType,
       image: getImageUrl(item.poster_path, 'w185'),
       certification,
+      trailerKey,
       watchProviders: {
         country,
         flatrate: flatrate.map(p => ({

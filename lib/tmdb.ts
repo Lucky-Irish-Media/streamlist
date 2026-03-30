@@ -33,6 +33,14 @@ export interface StreamingProvider {
   logo_path: string
 }
 
+export interface Video {
+  id: string
+  key: string
+  name: string
+  site: string
+  type: string
+}
+
 export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${BASE_URL}${endpoint}`)
   url.searchParams.set('api_key', TMDB_API_KEY)
@@ -147,6 +155,14 @@ export async function getTVContentRatings(tvId: number): Promise<{
   results: Array<{ iso_3166_1: string; rating: string }>
 }> {
   return fetchFromTMDB(`/tv/${tvId}/content_ratings`)
+}
+
+export async function getMovieVideos(movieId: number): Promise<{ results: Video[] }> {
+  return fetchFromTMDB(`/movie/${movieId}/videos`)
+}
+
+export async function getTVSeriesVideos(tvId: number): Promise<{ results: Video[] }> {
+  return fetchFromTMDB(`/tv/${tvId}/videos`)
 }
 
 export function getImageUrl(path: string | null, size: 'w185' | 'w500' | 'original' = 'w500'): string {

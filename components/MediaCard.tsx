@@ -37,6 +37,7 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [loadingWatched, setLoadingWatched] = useState(true)
   const [imageError, setImageError] = useState(false)
   const [modalImageError, setModalImageError] = useState(false)
+  const [showTrailer, setShowTrailer] = useState(false)
   const mediaType = item.media_type || item.mediaType || 'movie'
 
   useEffect(() => {
@@ -114,6 +115,7 @@ export default function MediaCard({ item }: MediaCardProps) {
 
   const closeModal = () => {
     setShowModal(false)
+    setShowTrailer(false)
     setDetails(null)
   }
 
@@ -294,7 +296,16 @@ export default function MediaCard({ item }: MediaCardProps) {
             ) : details ? (
               <div className="modal-content">
                 <div className="modal-hero">
-                  {details.backdrop_path && (
+                  {showTrailer && (details as any).trailerKey ? (
+                    <div className="trailer-embed">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${(details as any).trailerKey}?autoplay=1`}
+                        title="Trailer"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : details.backdrop_path && (
                     <img 
                       src={`https://image.tmdb.org/t/p/original${details.backdrop_path}`} 
                       alt={title}
@@ -322,6 +333,24 @@ export default function MediaCard({ item }: MediaCardProps) {
                             <span key={g.id} className="badge">{g.name}</span>
                           ))}
                         </div>
+                      )}
+                      {(details as any).trailerKey && (
+                        <button
+                          onClick={() => setShowTrailer(!showTrailer)}
+                          style={{
+                            marginTop: '16px',
+                            marginRight: '12px',
+                            padding: '12px 24px',
+                            backgroundColor: 'var(--danger)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                          }}
+                        >
+                          {showTrailer ? '✕ Close Trailer' : '▶ Watch Trailer'}
+                        </button>
                       )}
                       <button
                         onClick={toggleWatched}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import MediaCard from '@/components/MediaCard'
 import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
+import { Search } from 'lucide-react'
 import type { MediaItem } from '@/types/media'
 
 type Tab = 'trending' | 'movies' | 'tv' | 'new-movies' | 'new-tv'
@@ -241,7 +242,7 @@ export default function BrowsePage() {
 
       {displayItems.length === 0 && !loading && (
         <EmptyState
-          icon="🔍"
+          icon={Search}
           title="No Results Found"
           description={searchQuery ? `No results for "${searchQuery}"` : "No content available"}
           actionText={searchQuery ? "Clear Search" : undefined}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/components/UserContext'
 import EmptyState from '@/components/EmptyState'
+import { Lock, Users } from 'lucide-react'
 
 interface Group {
   id: string
@@ -64,7 +65,7 @@ export default function GroupsPage() {
     return (
       <main className="container" style={{ paddingTop: '32px' }}>
         <EmptyState
-          icon="🔐"
+          icon={Lock}
           title="Login Required"
           description="Please log in to view your groups"
           actionText="Login"
@@ -98,7 +99,7 @@ export default function GroupsPage() {
         <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
       ) : groups.length === 0 ? (
         <EmptyState
-          icon="👥"
+          icon={Users}
           title="No Groups Yet"
           description="Create a group to share watchlists and get recommendations with friends"
         />
