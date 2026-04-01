@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@/components/UserContext'
-import { Check, Eye, Heart, Trash2, Plus, FileText, Star } from 'lucide-react'
+import { Check, Eye, Heart, Trash2, Plus, FileText, Star, ArrowLeft, X, Play } from 'lucide-react'
 
 interface MediaItem {
   id: number
@@ -19,6 +19,21 @@ interface MediaItem {
   first_air_date?: string
   genres?: { id: number; name: string }[]
   certification?: string | null
+}
+
+interface CollectionPart {
+  id: number
+  title: string
+  poster_path: string | null
+  release_date: string | null
+  vote_average: number
+}
+
+interface CollectionDetails {
+  id: number
+  name: string
+  poster_path: string | null
+  parts: CollectionPart[]
 }
 
 interface MediaCardProps {
@@ -39,7 +54,14 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [imageError, setImageError] = useState(false)
   const [modalImageError, setModalImageError] = useState(false)
   const [showTrailer, setShowTrailer] = useState(false)
+  const [currentMovieId, setCurrentMovieId] = useState(item.id)
+  const [currentMediaType, setCurrentMediaType] = useState(item.media_type || item.mediaType || 'movie')
+  const [collectionHistory, setCollectionHistory] = useState<{ id: number; mediaType: string }[]>([])
+  
   const mediaType = item.media_type || item.mediaType || 'movie'
+  const isNavigated = collectionHistory.length > 0
+  const currentTitle = details?.title || details?.name || item.title || item.name || ''
+  const currentReleaseDate = details?.release_date || details?.first_air_date || item.release_date || item.first_air_date || ''
 
   useEffect(() => {
     const sessionId = localStorage.getItem('sessionId')
@@ -98,12 +120,15 @@ export default function MediaCard({ item }: MediaCardProps) {
       .catch(() => {})
   }, [item.id, mediaType, user?.countries])
 
-  const openModal = async () => {
-    if (showModal) return
+  const openModal = async (movieId?: number, mediaTypeOverride?: string) => {
+    const targetId = movieId ?? currentMovieId
+    const targetMediaType = mediaTypeOverride ?? currentMediaType
+    
     setLoadingDetails(true)
+    setModalImageError(false)
     try {
       const countries = user?.countries?.join(',') || 'US'
-      const res = await fetch(`/api/media?id=${item.id}&type=${mediaType}&countries=${countries}`)
+      const res = await fetch(`/api/media?id=${targetId}&type=${targetMediaType}&countries=${countries}`)
       const data = await res.json()
       setDetails(data)
     } catch (err) {
@@ -111,13 +136,38 @@ export default function MediaCard({ item }: MediaCardProps) {
     } finally {
       setLoadingDetails(false)
     }
-    setShowModal(true)
+    if (!showModal) {
+      setShowModal(true)
+    }
   }
 
   const closeModal = () => {
     setShowModal(false)
     setShowTrailer(false)
     setDetails(null)
+    setCurrentMovieId(item.id)
+    setCurrentMediaType(item.media_type || item.mediaType || 'movie')
+    setCollectionHistory([])
+  }
+
+  const navigateToMovie = (movieId: number, mediaType: string) => {
+    setCollectionHistory(prev => [...prev, { id: currentMovieId, mediaType: currentMediaType }])
+    setCurrentMovieId(movieId)
+    setCurrentMediaType(mediaType)
+    setShowTrailer(false)
+    setModalImageError(false)
+    openModal(movieId, mediaType)
+  }
+
+  const goBack = async () => {
+    if (collectionHistory.length === 0) return
+    const prev = collectionHistory[collectionHistory.length - 1]
+    setCollectionHistory(collectionHistory.slice(0, -1))
+    setCurrentMovieId(prev.id)
+    setCurrentMediaType(prev.mediaType)
+    setShowTrailer(false)
+    setModalImageError(false)
+    openModal(prev.id, prev.mediaType)
   }
 
   const toggleWatchlist = async (e: React.MouseEvent) => {
@@ -291,7 +341,48 @@ export default function MediaCard({ item }: MediaCardProps) {
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal media-modal" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={closeModal}>×</button>
+            <div className="modal-header-buttons">
+              {isNavigated && (
+                <button className="back-btn" onClick={goBack}>
+                  <ArrowLeft size={20} /> Back
+                </button>
+              )}
+              <div className="modal-action-icons">
+                <button 
+                  className="icon-btn" 
+                  onClick={toggleWatched} 
+                  title={isWatched ? 'Mark unwatched' : 'Mark as watched'}
+                >
+                  {isWatched ? <Check size={18} /> : <Eye size={18} />}
+                </button>
+                <button 
+                  className="icon-btn" 
+                  onClick={toggleLike} 
+                  title={isLiked ? 'Unlike' : 'Like'}
+                >
+                  <Heart size={18} fill={isLiked ? 'var(--danger)' : 'none'} />
+                </button>
+                <button 
+                  className="icon-btn" 
+                  onClick={toggleWatchlist} 
+                  title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+                >
+                  {inWatchlist ? <Trash2 size={18} /> : <Plus size={18} />}
+                </button>
+                {(details as any).trailerKey && (
+                  <button 
+                    className="icon-btn" 
+                    onClick={() => setShowTrailer(!showTrailer)} 
+                    title={showTrailer ? 'Close trailer' : 'Watch trailer'}
+                  >
+                    <Play size={18} />
+                  </button>
+                )}
+                <button className="icon-btn" onClick={closeModal} title="Close">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
             {loadingDetails ? (
               <div className="loading">Loading details...</div>
             ) : details ? (
@@ -309,23 +400,23 @@ export default function MediaCard({ item }: MediaCardProps) {
                   ) : details.backdrop_path && (
                     <img 
                       src={`https://image.tmdb.org/t/p/original${details.backdrop_path}`} 
-                      alt={title}
+                      alt={currentTitle}
                       className="modal-backdrop"
                     />
                   )}
                   <div className="modal-hero-content">
                     <img 
                       src={details.poster_path && !modalImageError ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : imageSrc} 
-                      alt={title}
+                      alt={currentTitle}
                       className="modal-poster"
                       onError={() => setModalImageError(true)}
                     />
                     <div className="modal-info">
-                      <h2 className="modal-title">{title}</h2>
+                      <h2 className="modal-title">{currentTitle}</h2>
                       <div className="modal-meta">
-                        <span className="badge">{mediaType}</span>
-                        {releaseDate && <span>{releaseDate.slice(0, 4)}</span>}
-                        <span className="rating">★ {details.vote_average?.toFixed(1)}</span>
+                        <span className="badge">{currentMediaType}</span>
+                        {currentReleaseDate && <span>{currentReleaseDate.slice(0, 4)}</span>}
+                        <span className="rating"><Star size={14} fill="var(--accent)" /> {details.vote_average?.toFixed(1)}</span>
                         <span className="certification">{certification || 'NA'}</span>
                       </div>
                       {details.genres && details.genres.length > 0 && (
@@ -335,39 +426,6 @@ export default function MediaCard({ item }: MediaCardProps) {
                           ))}
                         </div>
                       )}
-                      {(details as any).trailerKey && (
-                        <button
-                          onClick={() => setShowTrailer(!showTrailer)}
-                          style={{
-                            marginTop: '16px',
-                            marginRight: '12px',
-                            padding: '12px 24px',
-                            backgroundColor: 'var(--danger)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                          }}
-                        >
-                          {showTrailer ? '✕ Close Trailer' : '▶ Watch Trailer'}
-                        </button>
-                      )}
-                      <button
-                        onClick={toggleWatched}
-                        style={{
-                          marginTop: '16px',
-                          padding: '12px 24px',
-                          backgroundColor: isWatched ? 'var(--bg-tertiary)' : 'var(--accent)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                        }}
-                      >
-                        {isWatched ? '✓ Already Watched' : 'Mark as Watched'}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -377,21 +435,48 @@ export default function MediaCard({ item }: MediaCardProps) {
                     <p>{details.overview}</p>
                   </div>
                 )}
+                {(details as any).collection && (details as any).collection.parts && (
+                  <div className="modal-collection">
+                    <h3>Part of the {(details as any).collection.name}</h3>
+                    <div className="collection-grid">
+                      {[(details as any).collection.parts].flat().sort((a: any, b: any) => 
+                        (a.release_date || '').localeCompare(b.release_date || '')
+                      ).map((part: any) => (
+                        <div 
+                          key={part.id} 
+                          className={`collection-item ${part.id === currentMovieId ? 'current' : ''}`}
+                          onClick={() => navigateToMovie(part.id, 'movie')}
+                        >
+                          <img 
+                            src={part.poster_path ? `https://image.tmdb.org/t/p/w185${part.poster_path}` : '/placeholder.jpg'} 
+                            alt={part.title}
+                          />
+                          <div className="collection-item-title">{part.title}</div>
+                          <div className="collection-item-year">{part.release_date?.slice(0, 4) || ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {(details as any).watchProviders && (
                   <div className="modal-providers">
                     <h3>Stream on</h3>
                     {(details as any).watchProviders.flatrate.length > 0 ? (
                       <div className="provider-pills">
-                        {(details as any).watchProviders.flatrate.map((p: any) => (
-                          <span key={p.provider_id} className="provider-pill">
-                            {p.provider_name}
-                            {p.regions && p.regions.length > 0 && (
-                              <span className="provider-regions">
-                                {' '}[{p.regions.join(', ')}]
-                              </span>
-                            )}
-                          </span>
-                        ))}
+                        {(details as any).watchProviders.flatrate.map((p: any) => {
+                          const isPreferred = user?.streamingServices?.some((s) => s.id === String(p.provider_id))
+                          return (
+                            <span key={p.provider_id} className={`provider-pill ${isPreferred ? 'provider-pill--preferred' : ''}`}>
+                              {p.provider_name}
+                              {p.type && <span className="provider-type"> ({p.type})</span>}
+                              {p.regions && p.regions.length > 0 && (
+                                <span className="provider-regions">
+                                  {' '}[{p.regions.join(', ')}]
+                                </span>
+                              )}
+                            </span>
+                          )
+                        })}
                       </div>
                     ) : (
                       <p className="provider-empty">Not available for streaming in your selected regions</p>

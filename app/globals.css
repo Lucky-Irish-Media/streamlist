@@ -496,6 +496,11 @@ input:focus, textarea:focus {
   margin-bottom: 16px;
 }
 
+.modal-action-icons {
+  display: flex;
+  gap: 8px;
+}
+
 .back-btn {
   display: flex;
   align-items: center;
@@ -779,6 +784,12 @@ input:focus, textarea:focus {
   color: var(--text-primary);
 }
 
+.provider-pill--preferred {
+  border-color: #22c55e;
+  background: color-mix(in srgb, #22c55e 20%, var(--bg-tertiary));
+  font-weight: 600;
+}
+
 .provider-regions {
   font-size: 11px;
   color: var(--text-secondary);
@@ -923,4 +934,45 @@ input:focus, textarea:focus {
 
 .search-history-item:hover {
   background-color: var(--bg-tertiary);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 12px 20px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .tabs {
+    gap: 2px;
+  }
+  .tab {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
 }
