@@ -117,4 +117,4 @@ jobs:
             exit 1
           fi
 
-      echo "All API tests passed!"
+          echo "All API tests passed!"
