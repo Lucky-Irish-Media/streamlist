@@ -11,6 +11,14 @@ import type { MediaItem } from '@/types/media'
 type Tab = 'trending' | 'movies' | 'tv' | 'new-movies' | 'new-tv'
 type SortOption = 'popularity' | 'rating' | 'release-date'
 
+const tabLabels: Record<Tab, string> = {
+  trending: 'Trending',
+  movies: 'Popular Movies',
+  tv: 'Popular TV Shows',
+  'new-movies': 'In Theaters',
+  'new-tv': 'On TV Now',
+}
+
 const SEARCH_HISTORY_KEY = 'streamlist_search_history'
 const MAX_SEARCH_HISTORY = 5
 
@@ -42,6 +50,7 @@ function clearSearchHistory() {
 function BrowsePageContent() {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab') as Tab | null
+  const initialQuery = searchParams.get('q')
   const [tab, setTab] = useState<Tab>(initialTab || 'trending')
   const [sortBy, setSortBy] = useState<SortOption>('popularity')
   const [items, setItems] = useState<MediaItem[]>([])
@@ -49,11 +58,12 @@ function BrowsePageContent() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(initialQuery || '')
   const [searchResults, setSearchResults] = useState<MediaItem[]>([])
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const isInitialSearch = useRef(true)
 
   const fetchData = useCallback(async (pageNum: number, isLoadMore = false) => {
     if (isLoadMore) {
@@ -64,6 +74,12 @@ function BrowsePageContent() {
 
     const res = await fetch(`/api/browse?tab=${tab}&page=${pageNum}`)
     const data = await res.json()
+
+    if (!res.ok || !data.results) {
+      setLoading(false)
+      setLoadingMore(false)
+      return
+    }
 
     if (isLoadMore) {
       setItems(prev => [...prev, ...data.results])
@@ -83,9 +99,30 @@ function BrowsePageContent() {
     fetchData(1)
   }, [tab, fetchData])
 
+  const performSearch = useCallback(async (query: string, currentTab: Tab) => {
+    if (!query.trim()) return
+    const currentSearchType = currentTab === 'movies' || currentTab === 'new-movies' ? 'movie'
+      : currentTab === 'tv' || currentTab === 'new-tv' ? 'tv'
+      : null
+    saveSearchToHistory(query)
+    setSearchHistory(getSearchHistory())
+    setShowHistory(false)
+    const typeParam = currentSearchType ? `&type=${currentSearchType}` : ''
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}${typeParam}`)
+    const data = await res.json()
+    setSearchResults(data.results || [])
+  }, [])
+
   useEffect(() => {
     setSearchHistory(getSearchHistory())
   }, [])
+
+  useEffect(() => {
+    if (isInitialSearch.current && initialQuery) {
+      isInitialSearch.current = false
+      performSearch(initialQuery, tab)
+    }
+  }, [initialQuery, tab, performSearch])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -96,6 +133,10 @@ function BrowsePageContent() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const searchType = tab === 'movies' || tab === 'new-movies' ? 'movie'
+    : tab === 'tv' || tab === 'new-tv' ? 'tv'
+    : null
 
   const sortedItems = useMemo(() => {
     if (searchQuery) return searchResults
@@ -120,10 +161,6 @@ function BrowsePageContent() {
       fetchData(page + 1, true)
     }
   }
-
-  const searchType = tab === 'movies' || tab === 'new-movies' ? 'movie'
-    : tab === 'tv' || tab === 'new-tv' ? 'tv'
-    : null
 
   const search = async () => {
     if (!searchQuery.trim()) return
@@ -160,7 +197,7 @@ function BrowsePageContent() {
             placeholder={searchPlaceholder}
             style={{ width: '100%' }}
             onKeyDown={e => e.key === 'Enter' && search()}
-            onFocus={() => setShowHistory(true)}
+            onFocus={() => { setShowHistory(true); setSearchHistory(getSearchHistory()) }}
           />
           {showHistory && searchHistory.length > 0 && !searchQuery && (
             <div className="search-history-dropdown">
@@ -177,7 +214,20 @@ function BrowsePageContent() {
                 <div
                   key={idx}
                   className="search-history-item"
-                  onClick={() => { setSearchQuery(item); setShowHistory(false); search() }}
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    setSearchQuery(item)
+                    setShowHistory(false)
+                    const currentSearchType = tab === 'movies' || tab === 'new-movies' ? 'movie'
+                      : tab === 'tv' || tab === 'new-tv' ? 'tv'
+                      : null
+                    saveSearchToHistory(item)
+                    setSearchHistory(getSearchHistory())
+                    const typeParam = currentSearchType ? `&type=${currentSearchType}` : ''
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(item)}${typeParam}`)
+                    const data = await res.json()
+                    setSearchResults(data.results || [])
+                  }}
                 >
                   {item}
                 </div>
@@ -191,6 +241,17 @@ function BrowsePageContent() {
             Clear
           </button>
         )}
+        {!searchQuery && items.length > 0 && (
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as SortOption)}
+            style={{ marginLeft: 'auto', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+          >
+            <option value="popularity">Popularity</option>
+            <option value="rating">Rating</option>
+            <option value="release-date">Release Date</option>
+          </select>
+        )}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -201,22 +262,10 @@ function BrowsePageContent() {
               onClick={() => handleTabChange(t)}
               className={tab === t ? 'btn-primary' : 'btn-secondary'}
             >
-              {t.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              {tabLabels[t]}
             </button>
           ))}
         </div>
-
-        {!searchQuery && items.length > 0 && (
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as SortOption)}
-            style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
-          >
-            <option value="popularity">Popularity</option>
-            <option value="rating">Rating</option>
-            <option value="release-date">Release Date</option>
-          </select>
-        )}
       </div>
 
       {loading ? (

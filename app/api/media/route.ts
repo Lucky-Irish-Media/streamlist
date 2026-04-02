@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos } from '@/lib/tmdb'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos, getCollectionDetails, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
-async function getCertification(mediaType: string, id: number, country: string) {
+async function getCertification(mediaType: string, id: number, country: string, tmdb: TMDBConfig) {
   try {
     if (mediaType === 'movie') {
-      const releaseDates = await getMovieReleaseDates(id)
+      const releaseDates = await getMovieReleaseDates(id, tmdb)
       const findCertification = (isoCode: string) => {
         const data = releaseDates.results.find(r => r.iso_3166_1 === isoCode)
         if (!data?.release_dates) return null
@@ -17,7 +18,7 @@ async function getCertification(mediaType: string, id: number, country: string) 
       }
       return findCertification(country) || findCertification('US') || null
     } else {
-      const contentRatings = await getTVContentRatings(id)
+      const contentRatings = await getTVContentRatings(id, tmdb)
       const findCertification = (isoCode: string) => {
         const data = contentRatings.results.find(r => r.iso_3166_1 === isoCode)
         return data?.rating || null
@@ -30,6 +31,8 @@ async function getCertification(mediaType: string, id: number, country: string) 
 }
 
 export async function GET(req: NextRequest) {
+  const { env } = getRequestContext()
+  const tmdb = getTMDBConfig(env as any)
   const { searchParams } = new URL(req.url)
   const tmdbId = searchParams.get('id')
   const mediaType = searchParams.get('type')
@@ -47,13 +50,13 @@ export async function GET(req: NextRequest) {
     let videosPromise: ReturnType<typeof getMovieVideos> | ReturnType<typeof getTVSeriesVideos>
 
     if (mediaType === 'movie') {
-      detailsPromise = getMovieDetails(id)
-      providersPromise = getMovieWatchProviders(id)
-      videosPromise = getMovieVideos(id)
+      detailsPromise = getMovieDetails(id, tmdb)
+      providersPromise = getMovieWatchProviders(id, tmdb)
+      videosPromise = getMovieVideos(id, tmdb)
     } else if (mediaType === 'tv') {
-      detailsPromise = getTVDetails(id)
-      providersPromise = getTVWatchProviders(id)
-      videosPromise = getTVSeriesVideos(id)
+      detailsPromise = getTVDetails(id, tmdb)
+      providersPromise = getTVWatchProviders(id, tmdb)
+      videosPromise = getTVSeriesVideos(id, tmdb)
     } else {
       return NextResponse.json({ error: 'Invalid media type' }, { status: 400 })
     }
@@ -61,34 +64,66 @@ export async function GET(req: NextRequest) {
     const [item, providers, certification, videos] = await Promise.all([
       detailsPromise,
       providersPromise,
-      getCertification(mediaType, id, countries[0]),
+      getCertification(mediaType, id, countries[0], tmdb),
       videosPromise
     ])
+
+    let collection = null
+    if (mediaType === 'movie' && (item as any).belongs_to_collection) {
+      try {
+        collection = await getCollectionDetails((item as any).belongs_to_collection.id, tmdb)
+      } catch {
+        collection = null
+      }
+    }
 
     const trailer = videos.results?.find(
       (v: any) => v.site === 'YouTube' && v.type === 'Trailer'
     )
     const trailerKey = trailer?.key || null
 
-    const providerMap = new Map<number, { provider_id: number; provider_name: string; regions: string[] }>()
+    type ProviderEntry = { provider_id: number; provider_name: string; regions: string[]; type: string }
+    const providerMap = new Map<number, ProviderEntry>()
+
+    const providerTypes = [
+      { key: 'flatrate', label: 'Subscription' },
+      { key: 'free', label: 'Free' },
+      { key: 'ads', label: 'Ads' },
+      { key: 'rent', label: 'Rent' },
+      { key: 'buy', label: 'Buy' },
+    ]
 
     for (const country of countries) {
       const countryData = providers.results?.[country]
-      const flatrate = countryData?.flatrate || []
-      for (const p of flatrate) {
-        if (providerMap.has(p.provider_id)) {
-          providerMap.get(p.provider_id)!.regions.push(country)
-        } else {
-          providerMap.set(p.provider_id, {
-            provider_id: p.provider_id,
-            provider_name: p.provider_name,
-            regions: [country],
-          })
+      for (const { key, label } of providerTypes) {
+        const providerList = countryData?.[key as keyof typeof countryData] as any[] | undefined
+        if (!providerList) continue
+        for (const p of providerList as any[]) {
+          if (providerMap.has(p.provider_id)) {
+            const existing = providerMap.get(p.provider_id)!
+            if (!existing.regions.includes(country)) {
+              existing.regions.push(country)
+            }
+          } else {
+            providerMap.set(p.provider_id, {
+              provider_id: p.provider_id,
+              provider_name: p.provider_name,
+              regions: [country],
+              type: label,
+            })
+          }
         }
       }
     }
 
     const flatrate = Array.from(providerMap.values())
+
+    const debug = {
+      countriesRequested: countries,
+      providerCount: flatrate.length,
+      providers: flatrate.slice(0, 3).map(p => ({ id: p.provider_id, name: p.provider_name })),
+      rawResultsKeys: providers.results ? Object.keys(providers.results) : [],
+    }
 
     return NextResponse.json({
       ...item,
@@ -100,6 +135,8 @@ export async function GET(req: NextRequest) {
         countries,
         flatrate,
       },
+      collection,
+      _debug: debug,
     })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch media details' }, { status: 500 })

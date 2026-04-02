@@ -128,9 +128,27 @@ StreamList includes an MCP (Model Context Protocol) server that allows external 
 #### Groups (via MCP)
 | Tool | Description |
 |------|-------------|
-| `get_groups` | List all your groups |
+| `list_groups` | List all your groups |
 | `create_group` | Create a new group (`name`) |
-| `get_group_watchlist` | Get group watchlist with recommendations (`group_id`) |
+| `get_group_watchlist` | Get group watchlist with intersection (`group_id`) |
+| `create_group_invite` | Generate a 7-day invite token (`group_id`) |
+| `join_group` | Join a group using an invite token (`token`) |
+| `get_group_invites` | List active invites for a group (`group_id`, creator only) |
+
+#### Polls (via MCP)
+| Tool | Description |
+|------|-------------|
+| `create_poll` | Create a poll with candidates (`group_id`, `candidates` array) |
+| `vote_on_poll` | Vote on a poll with ranked choices (`poll_id`, `rankings` array) |
+| `get_poll_results` | Get poll results with Borda count scoring (`poll_id`) |
+| `close_poll` | Manually close a poll and record winner (`poll_id`) |
+| `list_group_polls` | List all polls in a group (`group_id`) |
+
+#### Access Codes (via MCP)
+| Tool | Description |
+|------|-------------|
+| `create_access_code` | Create a signup access code (admin only, optional `expires_days`) |
+| `verify_access_code` | Verify an access code for signup (`code`) |
 
 #### Preferences
 | Tool | Description |

@@ -13,17 +13,34 @@ npm run start       # Start production server
 
 ### Deployment
 ```bash
-npm run deploy      # Deploy to Cloudflare Pages (@cloudflare/next-on-pages)
+npm run build
 ```
+
+To deploy to preview (use `--branch preview`):
+```bash
+npx wrangler pages deploy .vercel/output/static --branch preview --commit-dirty=true
+```
+
+To deploy to production (use `--branch main`):
+```bash
+npx wrangler pages deploy .vercel/output/static --branch main --commit-dirty=true
+```
+
+**IMPORTANT:** Deploys MUST go ONLY to Preview branch unless explicitly stated otherwise by the user. Never deploy to production without explicit permission.
+
+Preview URL: https://preview.streamlist-40n.pages.dev
+Production URL: https://streamlist-40n.pages.dev
 
 ### Database
 ```bash
 npm run db:generate  # Generate Drizzle migrations
-npm run db:push      # Push schema to database
+npm run db:push      # Push schema to local database
 
-# For remote D1 database changes:
-npx wrangler d1 execute streamlist-db --remote --command="ALTER TABLE ..."
+# For remote D1 database changes (preview only by default):
+npx wrangler d1 execute streamlist-preview-db --remote --command="ALTER TABLE ..."
 ```
+
+**IMPORTANT:** Database migrations MUST only run on Preview unless explicitly stated otherwise. Never run migrations on production without explicit permission.
 
 ### Type Checking
 ```bash

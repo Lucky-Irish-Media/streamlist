@@ -94,6 +94,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'Not a member of this group' }, { status: 403 })
   }
 
+  const group = await db.select().from(schema.userGroups).where(eq(schema.userGroups.id, groupId)).get()
+  if (!group) {
+    return NextResponse.json({ error: 'Group not found' }, { status: 404 })
+  }
+
+  if (group.createdBy !== userId) {
+    return NextResponse.json({ error: 'Only the group creator can delete this group' }, { status: 403 })
+  }
+
   await db.delete(schema.userGroupMembers).where(eq(schema.userGroupMembers.groupId, groupId)).run()
   await db.delete(schema.userGroups).where(eq(schema.userGroups.id, groupId)).run()
   await db.delete(schema.groupInvites).where(eq(schema.groupInvites.groupId, groupId)).run()

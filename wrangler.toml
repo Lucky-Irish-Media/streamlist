@@ -3,10 +3,23 @@ compatibility_date = "2024-04-01"
 compatibility_flags = ["nodejs_compat_v2"]
 pages_build_output_dir = ".vercel/output/static"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "streamlist-db"
-database_id = "541b5cbd-1898-4994-8abd-557b5a57abf5"
+[observability]
+enabled = true
 
-[vars]
-TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
+[env.production]
+name = "streamlist"
+  [env.production.vars]
+  TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
+  [[env.production.d1_databases]]
+  binding = "DB"
+  database_name = "streamlist-db"
+  database_id = "541b5cbd-1898-4994-8abd-557b5a57abf5"
+
+[env.preview]
+name = "streamlist-preview"
+  [env.preview.vars]
+  TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
+  [[env.preview.d1_databases]]
+  binding = "DB"
+  database_name = "streamlist-preview-db"
+  database_id = "983ba98d-4c10-4eca-bbc4-787f9cb8ffca"

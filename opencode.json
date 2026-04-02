@@ -3,11 +3,24 @@
   "mcp": {
     "streamlist": {
       "type": "remote",
-      "url": "https://your-domain.pages.dev/api/mcp",
+      "url": "https://preview.streamlist-40n.pages.dev/api/mcp",
       "enabled": true,
       "headers": {
         "x-api-key": "{env:STREAMLIST_API_KEY}"
       }
+    }
+  },
+  "permission": {
+    "skill": {
+      "build": "allow",
+      "deploy": "allow",
+      "tracker-area": "allow",
+      "tracker-decision": "allow",
+      "tracker-feature": "allow",
+      "tracker-moc": "allow",
+      "tracker-read": "allow",
+      "tracker-research": "allow",
+      "tracker-task": "allow"
     }
   }
 }

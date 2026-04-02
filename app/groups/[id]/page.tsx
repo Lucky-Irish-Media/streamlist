@@ -89,10 +89,8 @@ export default function GroupPage() {
   }, [activeTab])
 
   const fetchGroup = async () => {
-    const sessionId = localStorage.getItem('sessionId')
     const res = await fetch(`/api/groups/${groupId}`, {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
     if (res.ok) {
       const data = await res.json()
@@ -105,10 +103,8 @@ export default function GroupPage() {
 
   const fetchGroupWatchlist = async () => {
     setWatchlistLoading(true)
-    const sessionId = localStorage.getItem('sessionId')
     const res = await fetch(`/api/groups/${groupId}/watchlist`, {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
     const data = await res.json()
     setGroupWatchlist(data)
@@ -129,10 +125,8 @@ export default function GroupPage() {
 
   const fetchPoll = async () => {
     setPollLoading(true)
-    const sessionId = localStorage.getItem('sessionId')
     const res = await fetch(`/api/groups/${groupId}/poll`, {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
     const data = await res.json()
     setPollData(data)
@@ -156,12 +150,10 @@ export default function GroupPage() {
   const createPoll = async () => {
     if (!pollDate) return
     setPollLoading(true)
-    const sessionId = localStorage.getItem('sessionId')
     await fetch(`/api/groups/${groupId}/poll`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ closedAt: pollDate })
@@ -177,7 +169,6 @@ export default function GroupPage() {
       return
     }
     setVoting(true)
-    const sessionId = localStorage.getItem('sessionId')
     const rankings: Record<string, { tmdbId: number; mediaType: string }> = {}
     for (const [tmdbId, rank] of Object.entries(userRankings)) {
       const candidate = pollData.poll.candidates.find((c: any) => c.tmdbId === Number(tmdbId))
@@ -188,8 +179,7 @@ export default function GroupPage() {
     await fetch(`/api/groups/${groupId}/poll/vote`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ rankings })
@@ -226,12 +216,10 @@ export default function GroupPage() {
   }
 
   const generateInvite = async () => {
-    const sessionId = localStorage.getItem('sessionId')
     const res = await fetch(`/api/groups/${groupId}/invite`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include'
     })
@@ -250,12 +238,10 @@ export default function GroupPage() {
   }
 
   const removeMember = async (memberId: number) => {
-    const sessionId = localStorage.getItem('sessionId')
     await fetch(`/api/groups/${groupId}/members`, {
       method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ memberId })
@@ -265,10 +251,8 @@ export default function GroupPage() {
 
   const deleteGroup = async () => {
     if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) return
-    const sessionId = localStorage.getItem('sessionId')
     await fetch(`/api/groups/${groupId}`, {
       method: 'DELETE',
-      headers: sessionId ? { 'x-session-id': sessionId } : {},
       credentials: 'include'
     })
     router.push('/groups')

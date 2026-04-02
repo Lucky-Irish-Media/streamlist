@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, List, Users, Settings } from 'lucide-react'
@@ -9,7 +9,7 @@ interface User {
   id: string
   username: string
   countries: string[]
-  streamingServices: string[]
+  streamingServices: { id: string; name: string }[]
   genres: number[]
   likes: { tmdbId: number; mediaType: string; title: string }[]
   hasCompletedOnboarding: boolean
@@ -40,10 +40,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   const refreshUser = async () => {
-    const sessionId = typeof localStorage !== 'undefined' ? localStorage.getItem('sessionId') : null
     const res = await fetch('/api/auth/me', { 
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
     const json = await res.json()
     setUser(json.user)
@@ -54,15 +52,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    const sessionId = typeof localStorage !== 'undefined' ? localStorage.getItem('sessionId') : null
     await fetch('/api/auth/logout', { 
       method: 'POST',
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('sessionId')
-    }
     setUser(null)
   }
 
@@ -80,21 +73,74 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
 function OnboardingModal({ user, onClose }: { user: User; onClose: () => void }) {
   const [step, setStep] = useState(1)
-  const [streamingServices, setStreamingServices] = useState<string[]>([])
+  const [streamingServices, setStreamingServices] = useState<{ id: string; name: string }[]>([])
   const [genres, setGenres] = useState<number[]>([])
   const [likes, setLikes] = useState<{ tmdbId: number; mediaType: string; title: string }[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
-  const sessionId = typeof localStorage !== 'undefined' ? localStorage.getItem('sessionId') : null
+  const [providerSearchQuery, setProviderSearchQuery] = useState('')
+  const [allProviders, setAllProviders] = useState<{ provider_id: number; provider_name: string; logo_path: string }[]>([])
+  const [providersLoading, setProvidersLoading] = useState(true)
 
-  const services = [
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const regions = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT', 'JP', 'KR', 'BR', 'IN', 'MX', 'PT', 'ZA']
+        const res = await fetch(`/api/providers?regions=${regions.join(',')}`)
+        const data = await res.json()
+        if (data.providers) {
+          setAllProviders(data.providers)
+        }
+      } catch (err) {
+        console.error('Failed to fetch providers:', err)
+      } finally {
+        setProvidersLoading(false)
+      }
+    }
+    fetchProviders()
+  }, [])
+
+  const defaultServices = [
     { id: '8', name: 'Netflix' },
     { id: '119', name: 'Amazon Prime Video' },
     { id: '257', name: 'Apple TV+' },
-    { id: '330', name: 'Hulu' },
+    { id: '15', name: 'Hulu' },
     { id: '387', name: 'HBO Max' },
     { id: '337', name: 'Disney+' },
   ]
+
+  const services = defaultServices.map(s => {
+    const provider = allProviders.find(p => String(p.provider_id) === s.id)
+    return {
+      id: s.id,
+      name: provider?.provider_name || s.name,
+      logo: provider?.logo_path
+    }
+  })
+
+  const getLogoUrl = (logo: string | undefined) => logo ? `https://image.tmdb.org/t/p/w45${logo}` : null
+
+  const providerSearchResults = useMemo(() => {
+    if (!providerSearchQuery.trim()) return []
+    const query = providerSearchQuery.toLowerCase()
+    return allProviders.filter(p => 
+      p.provider_name.toLowerCase().includes(query)
+    ).slice(0, 20)
+  }, [providerSearchQuery, allProviders])
+
+  const isProviderSelected = (id: string) => streamingServices.some(s => s.id === id)
+
+  const addProvider = (provider: { provider_id: number; provider_name: string; logo_path: string }) => {
+    const id = String(provider.provider_id)
+    if (!isProviderSelected(id)) {
+      setStreamingServices([...streamingServices, { id, name: provider.provider_name }])
+    }
+    setProviderSearchQuery('')
+  }
+
+  const removeProvider = (id: string) => {
+    setStreamingServices(streamingServices.filter(s => s.id !== id))
+  }
 
   const genreList = [
     { id: 28, name: 'Action' },
@@ -130,8 +176,7 @@ function OnboardingModal({ user, onClose }: { user: User; onClose: () => void })
     await fetch('/api/preferences', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ streamingServices, genres, likes }),
@@ -152,29 +197,150 @@ function OnboardingModal({ user, onClose }: { user: User; onClose: () => void })
           <div>
             <div className="form-group">
               <label className="form-label">Which streaming services do you have?</label>
-              <div className="checkbox-group">
-                {services.map(service => (
-                  <label
-                    key={service.id}
-                    className={`checkbox-item ${streamingServices.includes(service.id) ? 'selected' : ''}`}
-                  >
+              {providersLoading ? (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading services...</p>
+              ) : (
+                <>
+                  {streamingServices.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                      {streamingServices.map(service => {
+                        const provider = allProviders.find(p => String(p.provider_id) === service.id)
+                        const logo = provider?.logo_path
+                        return (
+                          <span
+                            key={service.id}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 8px 6px 12px',
+                              borderRadius: '20px',
+                              border: '1px solid var(--accent)',
+                              background: 'var(--accent)',
+                              color: 'var(--bg-primary)',
+                              fontSize: '13px',
+                            }}
+                          >
+                            {logo && (
+                              <img 
+                                src={getLogoUrl(logo) || undefined}
+                                alt=""
+                                style={{ width: '20px', height: '20px', borderRadius: '4px' }}
+                              />
+                            )}
+                            {service.name}
+                            <button
+                              onClick={() => removeProvider(service.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '18px',
+                                height: '18px',
+                                padding: 0,
+                                border: 'none',
+                                borderRadius: '50%',
+                                background: 'rgba(0,0,0,0.2)',
+                                color: 'inherit',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                lineHeight: 1,
+                              }}
+                              title="Remove"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <div className="checkbox-group">
+                    {services.map(service => (
+                      <label
+                        key={service.id}
+                        className={`checkbox-item ${streamingServices.some(s => s.id === service.id) ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={streamingServices.some(s => s.id === service.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setStreamingServices([...streamingServices, { id: service.id, name: service.name }])
+                            } else {
+                              setStreamingServices(streamingServices.filter(s => s.id !== service.id))
+                            }
+                          }}
+                        />
+                        {service.logo && (
+                          <img 
+                            src={getLogoUrl(service.logo) || undefined}
+                            alt=""
+                            style={{ width: '24px', height: '24px', borderRadius: '4px', marginRight: '8px' }}
+                          />
+                        )}
+                        {service.name}
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '16px' }}>
                     <input
-                      type="checkbox"
-                      checked={streamingServices.includes(service.id)}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setStreamingServices([...streamingServices, service.id])
-                        } else {
-                          setStreamingServices(streamingServices.filter(id => id !== service.id))
-                        }
+                      type="text"
+                      placeholder="Search for more services..."
+                      value={providerSearchQuery}
+                      onChange={e => setProviderSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '6px',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        outline: 'none',
                       }}
                     />
-                    {service.name}
-                  </label>
-                ))}
-              </div>
+                  </div>
+                  {providerSearchResults.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                      {providerSearchResults.map(provider => {
+                        const selected = isProviderSelected(String(provider.provider_id))
+                        return (
+                          <span
+                            key={provider.provider_id}
+                            onClick={() => !selected && addProvider(provider)}
+                            style={{ 
+                              cursor: selected ? 'default' : 'pointer',
+                              opacity: selected ? 0.5 : 1,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              border: '1px solid var(--border-color)',
+                              background: 'var(--surface)',
+                              color: 'var(--text-primary)',
+                              fontSize: '13px',
+                            }}
+                          >
+                            {provider.logo_path && (
+                              <img 
+                                src={`https://image.tmdb.org/t/p/w45${provider.logo_path}`}
+                                alt=""
+                                style={{ width: '24px', height: '24px', borderRadius: '4px' }}
+                              />
+                            )}
+                            {provider.provider_name}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            <button className="btn-primary" onClick={() => setStep(2)} style={{ width: '100%' }}>
+            <button className="btn-primary" onClick={() => setStep(2)} style={{ width: '100%', marginTop: '16px' }}>
               Next
             </button>
           </div>

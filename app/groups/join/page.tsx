@@ -28,14 +28,12 @@ export default function JoinGroupPage() {
     if (!token || !user) return
 
     setStatus('joining')
-    const sessionId = localStorage.getItem('sessionId')
 
     try {
       const res = await fetch(`/api/groups/join?token=${token}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(sessionId ? { 'x-session-id': sessionId } : {})
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({ token })

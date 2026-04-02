@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'edge'
 
@@ -61,12 +62,10 @@ export async function POST(req: NextRequest) {
 
     const { tmdbId, mediaType } = body
 
-    console.log('WATCHLIST POST body:', JSON.stringify(body))
-    console.log('WATCHLIST POST tmdbId:', tmdbId, typeof tmdbId, 'mediaType:', mediaType, typeof mediaType)
-    console.log('WATCHLIST POST keys:', Object.keys(body))
+    logger.info('Watchlist POST request', { body: JSON.stringify(body), tmdbId, tmdbType: typeof tmdbId, mediaType, mediaTypeType: typeof mediaType, keys: Object.keys(body) })
 
     if (!tmdbId) {
-      return NextResponse.json({ error: 'TMDB_ID_MISSING_DEBUG', debug: { receivedBody: body, tmdbId, mediaType } }, { status: 400 })
+      return NextResponse.json({ error: 'Missing tmdbId' }, { status: 400 })
     }
 
     const finalMediaType = mediaType || 'movie'
@@ -89,7 +88,7 @@ export async function POST(req: NextRequest) {
     await db.insert(schema.watchlist).values({ userId, tmdbId, mediaType: finalMediaType })
     return NextResponse.json({ added: true })
   } catch (error: any) {
-    console.error('Watchlist POST error:', error)
+    logger.error('Watchlist POST error', {}, error)
     return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 })
   }
 }

@@ -1,0 +1,120 @@
+name: Test API Endpoints
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API Base URL'
+        required: true
+        default: 'https://preview.streamlist-40n.pages.dev'
+      api_key:
+        description: 'API Key'
+        required: true
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test Missing tmdbId error
+        run: |
+          API_KEY=${{ secrets.STREAMLIST_API_KEY || github.event.inputs.api_key }}
+          BASE_URL=${{ github.event.inputs.api_url || 'https://preview.streamlist-40n.pages.dev' }}
+
+          echo "Testing missing tmdbId returns clean error (not debug)..."
+          response=$(curl -s -H "x-api-key: $API_KEY" -X POST "$BASE_URL/api/watchlist" \
+            -H "Content-Type: application/json" \
+            -d '{"mediaType": "movie"}')
+
+          if echo "$response" | grep -q '"debug"'; then
+            echo "FAIL: Response contains debug info"
+            echo "Response: $response"
+            exit 1
+          fi
+
+          if echo "$response" | grep -q '"error"'; then
+            error_msg=$(echo "$response" | grep -o '"error":"[^"]*"' | head -1)
+            echo "Response contains error: $error_msg"
+            if echo "$error_msg" | grep -q "TMDB_ID_MISSING_DEBUG"; then
+              echo "FAIL: Error message is still debug message"
+              exit 1
+            fi
+            echo "PASS: Clean error message returned"
+          else
+            echo "FAIL: No error in response"
+            echo "Response: $response"
+            exit 1
+          fi
+
+      - name: Test Valid Watchlist Add
+        run: |
+          API_KEY=${{ secrets.STREAMLIST_API_KEY || github.event.inputs.api_key }}
+          BASE_URL=${{ github.event.inputs.api_url || 'https://preview.streamlist-40n.pages.dev' }}
+
+          echo "Testing adding to watchlist..."
+          response=$(curl -s -H "x-api-key: $API_KEY" -X POST "$BASE_URL/api/watchlist" \
+            -H "Content-Type: application/json" \
+            -d '{"tmdbId": "550", "mediaType": "movie"}')
+
+          if echo "$response" | grep -q '"added":true\|"added":false'; then
+            echo "PASS: Watchlist add/remove works"
+          else
+            echo "FAIL: Unexpected response"
+            echo "Response: $response"
+            exit 1
+          fi
+
+      - name: Test Browse endpoint
+        run: |
+          API_KEY=${{ secrets.STREAMLIST_API_KEY || github.event.inputs.api_key }}
+          BASE_URL=${{ github.event.inputs.api_url || 'https://preview.streamlist-40n.pages.dev' }}
+
+          echo "Testing browse endpoint..."
+          response=$(curl -s -H "x-api-key: $API_KEY" "$BASE_URL/api/browse")
+
+          if echo "$response" | grep -q '"results"'; then
+            echo "PASS: Browse returns results"
+          else
+            echo "FAIL: Browse failed"
+            echo "Response: $response"
+            exit 1
+          fi
+
+      - name: Test Search endpoint
+        run: |
+          API_KEY=${{ secrets.STREAMLIST_API_KEY || github.event.inputs.api_key }}
+          BASE_URL=${{ github.event.inputs.api_url || 'https://preview.streamlist-40n.pages.dev' }}
+
+          echo "Testing search endpoint..."
+          response=$(curl -s -H "x-api-key: $API_KEY" "$BASE_URL/api/search?query=Fight")
+
+          if echo "$response" | grep -q '"results"'; then
+            echo "PASS: Search returns results"
+          else
+            echo "FAIL: Search failed"
+            echo "Response: $response"
+            exit 1
+          fi
+
+      - name: Test Recommendations endpoint
+        run: |
+          API_KEY=${{ secrets.STREAMLIST_API_KEY || github.event.inputs.api_key }}
+          BASE_URL=${{ github.event.inputs.api_url || 'https://preview.streamlist-40n.pages.dev' }}
+
+          echo "Testing recommendations endpoint..."
+          response=$(curl -s -H "x-api-key: $API_KEY" "$BASE_URL/api/recommendations")
+
+          if echo "$response" | grep -q '"results"'; then
+            echo "PASS: Recommendations returns results"
+          else
+            echo "FAIL: Recommendations failed"
+            echo "Response: $response"
+            exit 1
+          fi
+
+      echo "All API tests passed!"

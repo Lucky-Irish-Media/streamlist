@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchMulti, searchMovies, searchTVShows, getImageUrl } from '@/lib/tmdb'
+import { getRequestContext } from '@cloudflare/next-on-pages'
+import { searchMulti, searchMovies, searchTVShows, getImageUrl, getTMDBConfig } from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
 export async function GET(req: NextRequest) {
+  const { env } = getRequestContext()
+  const tmdb = getTMDBConfig(env as any)
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('q')
   const type = searchParams.get('type')
@@ -14,11 +17,11 @@ export async function GET(req: NextRequest) {
 
   let data
   if (type === 'movie') {
-    data = await searchMovies(query, 1)
+    data = await searchMovies(query, 1, tmdb)
   } else if (type === 'tv') {
-    data = await searchTVShows(query, 1)
+    data = await searchTVShows(query, 1, tmdb)
   } else {
-    data = await searchMulti(query, 1)
+    data = await searchMulti(query, 1, tmdb)
   }
 
   let results

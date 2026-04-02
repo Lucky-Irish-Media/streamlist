@@ -30,7 +30,7 @@ export interface User {
   id: string
   username: string
   country: string
-  streamingServices: string[]
+  streamingServices: { id: string; name: string }[]
   genres: number[]
   likes: LikeItem[]
   hasCompletedOnboarding: boolean
@@ -64,7 +64,13 @@ export interface Provider {
   logo_path: string
 }
 
+export interface ScoredMediaItem extends MediaItem {
+  score?: number
+  matchReasons?: string[]
+}
+
 export interface RecommendationsData {
+  forYou?: ScoredMediaItem[]
   recommendations?: MediaItem[]
   trending?: MediaItem[]
   movies?: MediaItem[]
@@ -73,4 +79,10 @@ export interface RecommendationsData {
     movies?: MediaItem[]
     tv?: MediaItem[]
   }
+  userPreferences?: {
+    streamingServices: { id: string; name: string }[]
+    countries: string[]
+  }
+  serviceRecommendations?: Record<string, MediaItem[]>
+  serviceNames?: Record<string, string>
 }

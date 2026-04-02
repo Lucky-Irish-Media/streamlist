@@ -292,7 +292,7 @@ async function handleGetPreferences(): Promise<{ content: Array<{ type: string; 
   }
 }
 
-async function handleUpdateStreamingServices(services: string[]): Promise<{ content: Array<{ type: string; text: string }> }> {
+async function handleUpdateStreamingServices(services: { id: string; name: string }[]): Promise<{ content: Array<{ type: string; text: string }> }> {
   const ctx = getContext()
   const database = getDb(ctx.env)
 
@@ -304,7 +304,7 @@ async function handleUpdateStreamingServices(services: string[]): Promise<{ cont
   if (services.length > 0) {
     await database
       .insert(schema.userStreamingServices)
-      .values(services.map(serviceId => ({ userId: ctx.userId, serviceId })))
+      .values(services.map(service => ({ userId: ctx.userId, serviceId: service.id, serviceName: service.name })))
       .run()
   }
 
@@ -439,11 +439,22 @@ async function handleCreateGroup(name: string): Promise<{ content: Array<{ type:
   const database = getDb(ctx.env)
   const { nanoid } = await import('nanoid')
 
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return { content: [{ type: 'text', text: JSON.stringify({ error: 'Group name is required' }) }] }
+  }
+
+  const trimmedName = name.trim()
+  if (trimmedName.length > 50) {
+    return { content: [{ type: 'text', text: JSON.stringify({ error: 'Group name must be 50 characters or less' }) }] }
+  }
+
+  const sanitizedName = trimmedName.replace(/<[^>]*>/g, '')
+
   const groupId = nanoid(16)
 
   await database.insert(schema.userGroups).values({
     id: groupId,
-    name,
+    name: sanitizedName,
     createdBy: ctx.userId,
   }).run()
 
@@ -453,7 +464,7 @@ async function handleCreateGroup(name: string): Promise<{ content: Array<{ type:
   }).run()
 
   return {
-    content: [{ type: 'text', text: JSON.stringify({ success: true, group: { id: groupId, name } }) }],
+    content: [{ type: 'text', text: JSON.stringify({ success: true, group: { id: groupId, name: sanitizedName } }) }],
   }
 }
 
@@ -581,7 +592,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'get_preferences':
         return await handleGetPreferences()
       case 'update_streaming_services':
-        return await handleUpdateStreamingServices(args.services as string[])
+        return await handleUpdateStreamingServices(args.services as { id: string; name: string }[])
       case 'update_genres':
         return await handleUpdateGenres(args.genres as number[])
       case 'update_country':
@@ -593,7 +604,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'list_groups':
         return await handleListGroups()
       case 'create_group':
-        return await handleCreateGroup(args.name as string)
+        const groupResult = await handleCreateGroup(args.name as string)
+        if (groupResult.content[0].text.includes('"error"')) {
+          return { ...groupResult, isError: true }
+        }
+        return groupResult
       case 'get_group_watchlist':
         return await handleGetGroupWatchlist(args.group_id as string)
       default:

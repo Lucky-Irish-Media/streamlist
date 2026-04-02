@@ -64,49 +64,43 @@ export default function MediaCard({ item }: MediaCardProps) {
   const currentReleaseDate = details?.release_date || details?.first_air_date || item.release_date || item.first_air_date || ''
 
   useEffect(() => {
-    const sessionId = localStorage.getItem('sessionId')
     fetch('/api/watchlist', {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => {
-        const exists = data.watchlist?.some((w: any) => w.tmdbId === item.id && w.mediaType === mediaType)
+        const exists = data.watchlist?.some((w: any) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
         setInWatchlist(!!exists)
       })
       .catch(() => {})
       .finally(() => setLoadingWatchlist(false))
-  }, [item.id, mediaType])
+  }, [currentMovieId, currentMediaType])
 
   useEffect(() => {
-    const sessionId = localStorage.getItem('sessionId')
     fetch('/api/auth/me', {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => {
-        const exists = data.user?.likes?.some((l: any) => l.tmdbId === item.id && l.mediaType === mediaType)
+        const exists = data.user?.likes?.some((l: any) => l.tmdbId === currentMovieId && l.mediaType === currentMediaType)
         setIsLiked(!!exists)
       })
       .catch(() => {})
       .finally(() => setLoadingLiked(false))
-  }, [item.id, mediaType])
+  }, [currentMovieId, currentMediaType])
 
   useEffect(() => {
-    const sessionId = localStorage.getItem('sessionId')
     fetch('/api/watched', {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => {
-        const exists = data.watched?.some((w: any) => w.tmdbId === item.id && w.mediaType === mediaType)
+        const exists = data.watched?.some((w: any) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
         setIsWatched(!!exists)
       })
       .catch(() => {})
       .finally(() => setLoadingWatched(false))
-  }, [item.id, mediaType])
+  }, [currentMovieId, currentMediaType])
 
   useEffect(() => {
     const countries = user?.countries?.join(',') || 'US'
@@ -172,8 +166,7 @@ export default function MediaCard({ item }: MediaCardProps) {
 
   const toggleWatchlist = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const sessionId = localStorage.getItem('sessionId')
-    if (!sessionId) {
+    if (!user) {
       alert('Please log in to add to watchlist')
       return
     }
@@ -181,11 +174,10 @@ export default function MediaCard({ item }: MediaCardProps) {
       const res = await fetch('/api/watchlist', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(sessionId ? { 'x-session-id': sessionId } : {})
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ tmdbId: item.id, mediaType }),
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
       })
       const data = await res.json()
       if (data.error) {
@@ -202,20 +194,18 @@ export default function MediaCard({ item }: MediaCardProps) {
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const sessionId = localStorage.getItem('sessionId')
-    if (!sessionId) {
+    if (!user) {
       alert('Please log in to like')
       return
     }
     try {
       const body = isLiked 
-        ? { removeLike: { tmdbId: item.id, mediaType } }
-        : { addLike: { tmdbId: item.id, mediaType, title: item.title || item.name } }
+        ? { removeLike: { tmdbId: currentMovieId, mediaType: currentMediaType } }
+        : { addLike: { tmdbId: currentMovieId, mediaType: currentMediaType, title: currentTitle } }
       const res = await fetch('/api/preferences', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(sessionId ? { 'x-session-id': sessionId } : {})
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify(body),
@@ -234,8 +224,7 @@ export default function MediaCard({ item }: MediaCardProps) {
 
   const toggleWatched = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const sessionId = localStorage.getItem('sessionId')
-    if (!sessionId) {
+    if (!user) {
       alert('Please log in')
       return
     }
@@ -244,22 +233,20 @@ export default function MediaCard({ item }: MediaCardProps) {
         await fetch('/api/watched', {
           method: 'DELETE',
           headers: {
-            'Content-Type': 'application/json',
-            ...(sessionId ? { 'x-session-id': sessionId } : {})
+            'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({ tmdbId: item.id, mediaType }),
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
         })
         setIsWatched(false)
       } else {
         const res = await fetch('/api/watched', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            ...(sessionId ? { 'x-session-id': sessionId } : {})
+            'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({ tmdbId: item.id, mediaType, title: item.title || item.name }),
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType, title: currentTitle }),
         })
         const data = await res.json()
         if (data.error) {

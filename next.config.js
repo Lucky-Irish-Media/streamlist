@@ -1,11 +1,3 @@
-let withNextOnPages
-
-try {
-  withNextOnPages = (await import('@cloudflare/next-on-pages')).default
-} catch (e) {
-  withNextOnPages = (config) => config
-}
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -16,6 +8,15 @@ const nextConfig = {
       },
     ],
   },
+}
+
+let withNextOnPages = (config) => config
+
+try {
+  const nextOnPages = await import('@cloudflare/next-on-pages')
+  withNextOnPages = nextOnPages.default
+} catch (e) {
+  console.warn('@cloudflare/next-on-pages not available')
 }
 
 const withPages = withNextOnPages(nextConfig)

@@ -1,5 +1,7 @@
-const TMDB_API_KEY = process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY || ''
-const BASE_URL = process.env.TMDB_API_BASE_URL || 'https://api.themoviedb.org/3'
+export interface TMDBConfig {
+  apiKey: string
+  baseUrl?: string
+}
 
 export interface MediaItem {
   id: number
@@ -47,9 +49,11 @@ export interface Video {
   type: string
 }
 
-export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
-  const url = new URL(`${BASE_URL}${endpoint}`)
-  url.searchParams.set('api_key', TMDB_API_KEY)
+export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string> = {}, tmdbConfig?: TMDBConfig): Promise<T> {
+  const apiKey = tmdbConfig?.apiKey || ''
+  const baseUrl = tmdbConfig?.baseUrl || 'https://api.themoviedb.org/3'
+  const url = new URL(`${baseUrl}${endpoint}`)
+  url.searchParams.set('api_key', apiKey)
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.set(key, value)
   })
@@ -61,28 +65,28 @@ export async function fetchFromTMDB<T>(endpoint: string, params: Record<string, 
   return res.json()
 }
 
-export async function getTrending(mediaType: 'all' | 'movie' | 'tv' = 'all', page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB(`/trending/${mediaType}/week`, { page: String(page) })
+export async function getTrending(mediaType: 'all' | 'movie' | 'tv' = 'all', page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB(`/trending/${mediaType}/week`, { page: String(page) }, tmdbConfig)
 }
 
-export async function getPopularMovies(page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/movie/popular', { page: String(page) })
+export async function getPopularMovies(page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/movie/popular', { page: String(page) }, tmdbConfig)
 }
 
-export async function getPopularTVShows(page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/tv/popular', { page: String(page) })
+export async function getPopularTVShows(page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/tv/popular', { page: String(page) }, tmdbConfig)
 }
 
-export async function getNowPlaying(page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/movie/now_playing', { page: String(page) })
+export async function getNowPlaying(page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/movie/now_playing', { page: String(page) }, tmdbConfig)
 }
 
-export async function getOnTheAir(page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/tv/on_the_air', { page: String(page) })
+export async function getOnTheAir(page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/tv/on_the_air', { page: String(page) }, tmdbConfig)
 }
 
-export async function getGenres(mediaType: 'movie' | 'tv' | 'all' = 'all'): Promise<{ genres: Genre[] }> {
-  return fetchFromTMDB(`/genre/${mediaType}/list`)
+export async function getGenres(mediaType: 'movie' | 'tv' | 'all' = 'all', tmdbConfig?: TMDBConfig): Promise<{ genres: Genre[] }> {
+  return fetchFromTMDB(`/genre/${mediaType}/list`, {}, tmdbConfig)
 }
 
 export async function discoverMovies(params: {
@@ -90,8 +94,10 @@ export async function discoverMovies(params: {
   sort_by?: string
   page?: string
   language?: string
-}): Promise<TMDBResponse> {
-  return fetchFromTMDB('/discover/movie', params as Record<string, string>)
+  with_watch_providers?: string
+  watch_region?: string
+}, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/discover/movie', params as Record<string, string>, tmdbConfig)
 }
 
 export async function discoverTVShows(params: {
@@ -99,45 +105,47 @@ export async function discoverTVShows(params: {
   sort_by?: string
   page?: string
   language?: string
-}): Promise<TMDBResponse> {
-  return fetchFromTMDB('/discover/tv', params as Record<string, string>)
+  with_watch_providers?: string
+  watch_region?: string
+}, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/discover/tv', params as Record<string, string>, tmdbConfig)
 }
 
-export async function getMovieRecommendations(movieId: number, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB(`/movie/${movieId}/recommendations`, { page: String(page) })
+export async function getMovieRecommendations(movieId: number, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB(`/movie/${movieId}/recommendations`, { page: String(page) }, tmdbConfig)
 }
 
-export async function getTVRecommendations(tvId: number, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB(`/tv/${tvId}/recommendations`, { page: String(page) })
+export async function getTVRecommendations(tvId: number, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB(`/tv/${tvId}/recommendations`, { page: String(page) }, tmdbConfig)
 }
 
-export async function getMovieSimilar(movieId: number, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB(`/movie/${movieId}/similar`, { page: String(page) })
+export async function getMovieSimilar(movieId: number, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB(`/movie/${movieId}/similar`, { page: String(page) }, tmdbConfig)
 }
 
-export async function getTVSimilar(tvId: number, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB(`/tv/${tvId}/similar`, { page: String(page) })
+export async function getTVSimilar(tvId: number, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB(`/tv/${tvId}/similar`, { page: String(page) }, tmdbConfig)
 }
 
-export async function getMovieWatchProviders(movieId: number): Promise<{
-  results: Record<string, { flatrate?: StreamingProvider[] }>
+export async function getMovieWatchProviders(movieId: number, tmdbConfig?: TMDBConfig): Promise<{
+  results: Record<string, { flatrate?: StreamingProvider[]; free?: StreamingProvider[]; ads?: StreamingProvider[]; rent?: StreamingProvider[]; buy?: StreamingProvider[] }>
 }> {
-  return fetchFromTMDB(`/movie/${movieId}/watch/providers`)
+  return fetchFromTMDB(`/movie/${movieId}/watch/providers`, {}, tmdbConfig)
 }
 
-export async function getTVWatchProviders(tvId: number): Promise<{
-  results: Record<string, { flatrate?: StreamingProvider[] }>
+export async function getTVWatchProviders(tvId: number, tmdbConfig?: TMDBConfig): Promise<{
+  results: Record<string, { flatrate?: StreamingProvider[]; free?: StreamingProvider[]; ads?: StreamingProvider[]; rent?: StreamingProvider[]; buy?: StreamingProvider[] }>
 }> {
-  return fetchFromTMDB(`/tv/${tvId}/watch/providers`)
+  return fetchFromTMDB(`/tv/${tvId}/watch/providers`, {}, tmdbConfig)
 }
 
-export async function getWatchProviders(regions: string[] = ['US']): Promise<Provider[]> {
+export async function getWatchProviders(regions: string[] = ['US'], tmdbConfig?: TMDBConfig): Promise<Provider[]> {
   const allProviders: Map<number, Provider> = new Map()
 
   for (const region of regions) {
     const [movieRes, tvRes] = await Promise.all([
-      fetchFromTMDB<{ results: Provider[] }>('/watch/providers/movie', { region }),
-      fetchFromTMDB<{ results: Provider[] }>('/watch/providers/tv', { region }),
+      fetchFromTMDB<{ results: Provider[] }>('/watch/providers/movie', { region }, tmdbConfig),
+      fetchFromTMDB<{ results: Provider[] }>('/watch/providers/tv', { region }, tmdbConfig),
     ])
 
     for (const provider of movieRes.results ?? []) {
@@ -157,44 +165,44 @@ export async function getWatchProviders(regions: string[] = ['US']): Promise<Pro
   )
 }
 
-export async function searchMulti(query: string, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/search/multi', { query, page: String(page) })
+export async function searchMulti(query: string, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/search/multi', { query, page: String(page) }, tmdbConfig)
 }
 
-export async function searchMovies(query: string, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/search/movie', { query, page: String(page) })
+export async function searchMovies(query: string, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/search/movie', { query, page: String(page) }, tmdbConfig)
 }
 
-export async function searchTVShows(query: string, page = 1): Promise<TMDBResponse> {
-  return fetchFromTMDB('/search/tv', { query, page: String(page) })
+export async function searchTVShows(query: string, page = 1, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/search/tv', { query, page: String(page) }, tmdbConfig)
 }
 
-export async function getMovieDetails(movieId: number): Promise<MediaItem & { genres: Genre[] }> {
-  return fetchFromTMDB(`/movie/${movieId}`)
+export async function getMovieDetails(movieId: number, tmdbConfig?: TMDBConfig): Promise<MediaItem & { genres: Genre[] }> {
+  return fetchFromTMDB(`/movie/${movieId}`, {}, tmdbConfig)
 }
 
-export async function getTVDetails(tvId: number): Promise<MediaItem & { genres: Genre[] }> {
-  return fetchFromTMDB(`/tv/${tvId}`)
+export async function getTVDetails(tvId: number, tmdbConfig?: TMDBConfig): Promise<MediaItem & { genres: Genre[] }> {
+  return fetchFromTMDB(`/tv/${tvId}`, {}, tmdbConfig)
 }
 
-export async function getMovieReleaseDates(movieId: number): Promise<{
+export async function getMovieReleaseDates(movieId: number, tmdbConfig?: TMDBConfig): Promise<{
   results: Array<{ iso_3166_1: string; release_dates: Array<{ certification: string }> }>
 }> {
-  return fetchFromTMDB(`/movie/${movieId}/release_dates`)
+  return fetchFromTMDB(`/movie/${movieId}/release_dates`, {}, tmdbConfig)
 }
 
-export async function getTVContentRatings(tvId: number): Promise<{
+export async function getTVContentRatings(tvId: number, tmdbConfig?: TMDBConfig): Promise<{
   results: Array<{ iso_3166_1: string; rating: string }>
 }> {
-  return fetchFromTMDB(`/tv/${tvId}/content_ratings`)
+  return fetchFromTMDB(`/tv/${tvId}/content_ratings`, {}, tmdbConfig)
 }
 
-export async function getMovieVideos(movieId: number): Promise<{ results: Video[] }> {
-  return fetchFromTMDB(`/movie/${movieId}/videos`)
+export async function getMovieVideos(movieId: number, tmdbConfig?: TMDBConfig): Promise<{ results: Video[] }> {
+  return fetchFromTMDB(`/movie/${movieId}/videos`, {}, tmdbConfig)
 }
 
-export async function getTVSeriesVideos(tvId: number): Promise<{ results: Video[] }> {
-  return fetchFromTMDB(`/tv/${tvId}/videos`)
+export async function getTVSeriesVideos(tvId: number, tmdbConfig?: TMDBConfig): Promise<{ results: Video[] }> {
+  return fetchFromTMDB(`/tv/${tvId}/videos`, {}, tmdbConfig)
 }
 
 export interface CollectionPart {
@@ -215,8 +223,59 @@ export interface CollectionDetails {
   parts: CollectionPart[]
 }
 
-export async function getCollectionDetails(collectionId: number): Promise<CollectionDetails> {
-  return fetchFromTMDB(`/collection/${collectionId}`)
+export async function getCollectionDetails(collectionId: number, tmdbConfig?: TMDBConfig): Promise<CollectionDetails> {
+  return fetchFromTMDB(`/collection/${collectionId}`, {}, tmdbConfig)
+}
+
+export interface MovieKeywords {
+  id: number
+  keywords: { id: number; name: string }[]
+}
+
+export interface TVKeywords {
+  id: number
+  results: { id: number; name: string }[]
+}
+
+export async function getMovieKeywords(movieId: number, tmdbConfig?: TMDBConfig): Promise<MovieKeywords> {
+  return fetchFromTMDB(`/movie/${movieId}/keywords`, {}, tmdbConfig)
+}
+
+export async function getTVKeywords(tvId: number, tmdbConfig?: TMDBConfig): Promise<TVKeywords> {
+  return fetchFromTMDB(`/tv/${tvId}/keywords`, {}, tmdbConfig)
+}
+
+export async function discoverMoviesWithKeywords(params: {
+  with_keywords?: string
+  with_genres?: string
+  vote_average_gte?: string
+  vote_count_gte?: string
+  sort_by?: string
+  page?: string
+  with_watch_providers?: string
+  watch_region?: string
+}, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/discover/movie', params as Record<string, string>, tmdbConfig)
+}
+
+export async function discoverTVShowsWithKeywords(params: {
+  with_keywords?: string
+  with_genres?: string
+  vote_average_gte?: string
+  vote_count_gte?: string
+  sort_by?: string
+  page?: string
+  with_watch_providers?: string
+  watch_region?: string
+}, tmdbConfig?: TMDBConfig): Promise<TMDBResponse> {
+  return fetchFromTMDB('/discover/tv', params as Record<string, string>, tmdbConfig)
+}
+
+export function getTMDBConfig(env: Record<string, unknown>): TMDBConfig {
+  return {
+    apiKey: (env.TMDB_API_KEY || env.NEXT_PUBLIC_TMDB_API_KEY || '') as string,
+    baseUrl: (env.TMDB_API_BASE_URL || 'https://api.themoviedb.org/3') as string,
+  }
 }
 
 export function getImageUrl(path: string | null, size: 'w185' | 'w500' | 'original' = 'w500'): string {
@@ -225,15 +284,13 @@ export function getImageUrl(path: string | null, size: 'w185' | 'w500' | 'origin
 }
 
 export const STREAMING_SERVICES = [
-  { id: 8, name: 'Netflix', logo: 'https://image.tmdb.org/t/p/original/gyKiV5zz3R1A22vh5t2t3J9J3u5.png' },
-  { id: 119, name: 'Amazon Prime Video', logo: 'https://image.tmdb.org/t/p/original/68H1O16Hg2zrkcD1p1Q0f2vKk2F.png' },
-  { id: 213, name: 'Netflix', logo: 'https://image.tmdb.org/t/p/original/pezA5BtCpG8u2q6b6xI3w1I7n1g.png' },
-  { id: 257, name: 'Apple TV+', logo: 'https://image.tmdb.org/t/p/original/4Z7yA0n2PEX3YKD3VXt2T4J3kHH.png' },
-  { id: 330, name: 'Hulu', logo: 'https://image.tmdb.org/t/p/original/yHZ2W3Ek9D2w1v2D7rT1Bj6g6aG.png' },
-  { id: 387, name: 'HBO Max', logo: 'https://image.tmdb.org/t/p/original/yZBqkV464dCw4qpoXqHZIK3PTHF.png' },
-  { id: 420, name: 'Apple TV+', logo: 'https://image.tmdb.org/t/p/original/4Z7yA0n2PEX3YKD3VXt2T4J3kHH.png' },
-  { id: 1899, name: 'Max', logo: 'https://image.tmdb.org/t/p/original/cuC3fY3lJ7L7F1Y7X2z8Y7J3.png' },
-  { id: 337, name: 'Disney+', logo: 'https://image.tmdb.org/t/p/original/7Q53I7Cl85lX95bK2xT3f4j1B2a.png' },
+  { id: 8, name: 'Netflix' },
+  { id: 119, name: 'Amazon Prime Video' },
+  { id: 257, name: 'Apple TV+' },
+  { id: 330, name: 'Hulu' },
+  { id: 337, name: 'Disney+' },
+  { id: 387, name: 'HBO Max' },
+  { id: 1899, name: 'Max' },
 ]
 
 export const TMDB_GENRES = {

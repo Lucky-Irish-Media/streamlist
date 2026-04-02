@@ -22,15 +22,12 @@ export default function WatchlistPage() {
   const [filterBy, setFilterBy] = useState<FilterOption>('to-watch')
 
   useEffect(() => {
-    const sessionId = localStorage.getItem('sessionId')
     Promise.all([
       fetch('/api/watchlist', { 
-        credentials: 'include',
-        headers: sessionId ? { 'x-session-id': sessionId } : {}
+        credentials: 'include'
       }).then(res => res.json()),
       fetch('/api/watched', { 
-        credentials: 'include',
-        headers: sessionId ? { 'x-session-id': sessionId } : {}
+        credentials: 'include'
       }).then(res => res.json())
     ]).then(([watchlistData, watchedData]) => {
       const list = watchlistData.watchlist || []
@@ -81,12 +78,10 @@ export default function WatchlistPage() {
   }, [items, sortBy, filterBy, watched])
 
   const removeFromWatchlist = async (tmdbId: number, mediaType: string) => {
-    const sessionId = localStorage.getItem('sessionId')
     await fetch('/api/watchlist', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ tmdbId, mediaType }),

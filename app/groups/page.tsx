@@ -29,10 +29,8 @@ export default function GroupsPage() {
   }, [user])
 
   const fetchGroups = async () => {
-    const sessionId = localStorage.getItem('sessionId')
     const res = await fetch('/api/groups', {
-      credentials: 'include',
-      headers: sessionId ? { 'x-session-id': sessionId } : {}
+      credentials: 'include'
     })
     const data = await res.json()
     setGroups(data.groups || [])
@@ -42,12 +40,10 @@ export default function GroupsPage() {
   const createGroup = async () => {
     if (!newGroupName.trim()) return
     setCreating(true)
-    const sessionId = localStorage.getItem('sessionId')
     const res = await fetch('/api/groups', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(sessionId ? { 'x-session-id': sessionId } : {})
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ name: newGroupName.trim() })

@@ -56,11 +56,12 @@ export async function GET(req: NextRequest) {
       username: user.username,
       createdAt: user.createdAt,
       countries,
-      streamingServices: streamingServices.map(s => s.serviceId),
+      streamingServices: streamingServices.map(s => ({ id: s.serviceId, name: s.serviceName })),
       genres: genres.map(g => g.genreId),
       likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
       hasCompletedOnboarding,
       apiKey: user.apiKey,
+      isAdmin: user.isAdmin,
     } : null,
   })
 }

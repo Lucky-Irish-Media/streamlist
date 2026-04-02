@@ -51,8 +51,10 @@ export async function POST(req: NextRequest) {
 
   if (streamingServices) {
     await db.delete(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, userId)).run()
-    for (const serviceId of streamingServices) {
-      await db.insert(schema.userStreamingServices).values({ userId, serviceId })
+    for (const service of streamingServices) {
+      const serviceId = typeof service === 'string' ? service : service.id
+      const serviceName = typeof service === 'string' ? service : (service.name || serviceId)
+      await db.insert(schema.userStreamingServices).values({ userId, serviceId, serviceName })
     }
   }
 

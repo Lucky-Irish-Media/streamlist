@@ -69,12 +69,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Group name is required' }, { status: 400 })
   }
 
+  const trimmedName = name.trim()
+  if (trimmedName.length > 50) {
+    return NextResponse.json({ error: 'Group name must be 50 characters or less' }, { status: 400 })
+  }
+
+  const sanitizedName = trimmedName.replace(/<[^>]*>/g, '')
+
   const db = getDB(dbEnv)
   const groupId = nanoid(16)
 
   await db.insert(schema.userGroups).values({
     id: groupId,
-    name: name.trim(),
+    name: sanitizedName,
     createdBy: userId,
   })
 
@@ -83,5 +90,5 @@ export async function POST(req: NextRequest) {
     userId,
   })
 
-  return NextResponse.json({ group: { id: groupId, name: name.trim() } })
+  return NextResponse.json({ group: { id: groupId, name: sanitizedName } })
 }

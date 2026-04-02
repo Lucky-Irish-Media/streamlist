@@ -27,7 +27,6 @@ export default function LoginPage() {
     if (data.error) {
       setError(data.error)
     } else {
-      localStorage.setItem('sessionId', data.sessionId)
       window.location.href = '/'
     }
   }

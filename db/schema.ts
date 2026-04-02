@@ -6,12 +6,14 @@ export const users = sqliteTable('users', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   countries: text('countries').notNull().$defaultFn(() => '["US"]'),
   apiKey: text('api_key'),
+  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().$defaultFn(() => false),
 })
 
 export const userStreamingServices = sqliteTable('user_streaming_services', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().references(() => users.id),
   serviceId: text('service_id').notNull(),
+  serviceName: text('service_name').notNull(),
 })
 
 export const userGenres = sqliteTable('user_genres', {
@@ -74,7 +76,7 @@ export const groupInvites = sqliteTable('group_invites', {
 })
 
 export const groupPolls = sqliteTable('group_polls', {
-  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  id: text('id').primaryKey(),
   groupId: text('group_id').notNull().references(() => userGroups.id),
   status: text('status').notNull().$defaultFn(() => 'active'),
   closedAt: integer('closed_at', { mode: 'timestamp' }).notNull(),
@@ -85,8 +87,17 @@ export const groupPolls = sqliteTable('group_polls', {
 })
 
 export const groupPollVotes = sqliteTable('group_poll_votes', {
-  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
-  pollId: integer('poll_id', { mode: 'number' }).notNull().references(() => groupPolls.id),
+  id: text('id').primaryKey(),
+  pollId: text('poll_id').notNull().references(() => groupPolls.id),
   userId: text('user_id').notNull().references(() => users.id),
   rankings: text('rankings').notNull(),
+})
+
+export const accessCodes = sqliteTable('access_codes', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  createdBy: text('created_by').references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().$defaultFn(() => true),
 })

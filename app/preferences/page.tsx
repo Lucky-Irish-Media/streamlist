@@ -4,14 +4,16 @@ import { useState, useEffect, useMemo } from 'react'
 import { useUser } from '@/components/UserContext'
 import { useRouter } from 'next/navigation'
 
-const defaultServices = [
-  { id: '8', name: 'Netflix', logo: 'https://image.tmdb.org/t/p/original/gyKiV5zz3R1A22vh5t2t3J9J3u5.png' },
-  { id: '119', name: 'Amazon Prime Video', logo: 'https://image.tmdb.org/t/p/original/68H1O16Hg2zrkcD1p1Q0f2vKk2F.png' },
-  { id: '257', name: 'Apple TV+', logo: 'https://image.tmdb.org/t/p/original/4Z7yA0n2PEX3YKD3VXt2T4J3kHH.png' },
-  { id: '330', name: 'Hulu', logo: 'https://image.tmdb.org/t/p/original/yHZ2W3Ek9D2w1v2D7rT1Bj6g6aG.png' },
-  { id: '387', name: 'HBO Max', logo: 'https://image.tmdb.org/t/p/original/yZBqkV464dCw4qpoXqHZIK3PTHF.png' },
-  { id: '337', name: 'Disney+', logo: 'https://image.tmdb.org/t/p/original/7Q53I7Cl85lX95bK2xT3f4j1B2a.png' },
-]
+const defaultServiceIds = ['8', '119', '257', '15', '387', '337']
+
+const SERVICE_NAME_MAP: Record<string, string> = {
+  '8': 'Netflix',
+  '15': 'Hulu',
+  '119': 'Amazon Prime Video',
+  '257': 'Apple TV+',
+  '337': 'Disney+',
+  '387': 'HBO Max',
+}
 
 const genreList = [
   { id: 28, name: 'Action' },
@@ -42,6 +44,7 @@ const countries = [
   { code: 'MX', name: 'Mexico' },
   { code: 'KR', name: 'South Korea' },
   { code: 'PT', name: 'Portugal' },
+  { code: 'ZA', name: 'South Africa' },
 ]
 
 export default function PreferencesPage() {
@@ -52,6 +55,7 @@ export default function PreferencesPage() {
   const [allProviders, setAllProviders] = useState<{ provider_id: number; provider_name: string; logo_path: string }[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [providersLoading, setProvidersLoading] = useState(false)
+  const [likesWithPosters, setLikesWithPosters] = useState<{ tmdbId: number; mediaType: string; title: string; posterPath: string | null }[]>([])
 
   const getUserCountries = () => {
     if (!user?.countries) return ['US']
@@ -69,7 +73,7 @@ export default function PreferencesPage() {
     const fetchProviders = async () => {
       setProvidersLoading(true)
       try {
-        const regions = getUserCountries()
+        const regions = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT', 'JP', 'KR', 'BR', 'IN', 'MX', 'PT', 'ZA']
         const res = await fetch(`/api/providers?regions=${regions.join(',')}`)
         const data = await res.json()
         if (data.providers) {
@@ -82,7 +86,32 @@ export default function PreferencesPage() {
       }
     }
     fetchProviders()
-  }, [user?.countries])
+  }, [])
+
+  useEffect(() => {
+    if (!user?.likes || user.likes.length === 0) {
+      setLikesWithPosters([])
+      return
+    }
+    const fetchLikesWithPosters = async () => {
+      try {
+        const results = await Promise.all(
+          user.likes.map(async (like) => {
+            const type = like.mediaType === 'tv' ? 'tv' : 'movie'
+            const res = await fetch(`/api/media?id=${like.tmdbId}&type=${type}`)
+            if (!res.ok) return { ...like, posterPath: null }
+            const data = await res.json()
+            return { ...like, posterPath: data.poster_path }
+          })
+        )
+        setLikesWithPosters(results)
+      } catch (err) {
+        console.error('Failed to fetch posters:', err)
+        setLikesWithPosters(user.likes.map(l => ({ ...l, posterPath: null })))
+      }
+    }
+    fetchLikesWithPosters()
+  }, [user?.likes])
 
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return []
@@ -92,7 +121,32 @@ export default function PreferencesPage() {
     ).slice(0, 20)
   }, [searchQuery, allProviders])
 
-  const isSelected = (id: string) => user?.streamingServices?.includes(id)
+  const isSelected = (id: string) => user?.streamingServices?.some(s => (typeof s === 'string' ? s : s.id) === id)
+
+  const getProviderInfo = (id: string) => {
+    if (defaultServiceIds.includes(id)) {
+      const tmdbProvider = allProviders.find(p => String(p.provider_id) === id)
+      if (tmdbProvider) return { name: tmdbProvider.provider_name, logo: tmdbProvider.logo_path, isFullUrl: false }
+    }
+    const tmdbProvider = allProviders.find(p => String(p.provider_id) === id)
+    if (tmdbProvider) return { name: tmdbProvider.provider_name, logo: tmdbProvider.logo_path, isFullUrl: false }
+    return null
+  }
+
+  const getLogoUrl = (info: { logo: string; isFullUrl: boolean } | null) => {
+    if (!info?.logo) return null
+    return info.isFullUrl ? info.logo : `https://image.tmdb.org/t/p/w45${info.logo}`
+  }
+
+  const selectedServices = (user?.streamingServices || []).filter(s => {
+    const id = typeof s === 'string' ? s : s.id
+    return isSelected(id)
+  }) as { id: string; name: string }[]
+
+  const getServiceName = (id: string) => {
+    const info = getProviderInfo(id)
+    return info?.name || SERVICE_NAME_MAP[id] || id
+  }
 
   if (!user) {
     return (
@@ -103,14 +157,12 @@ export default function PreferencesPage() {
   }
 
   const savePreferences = async (data: Record<string, any>) => {
-    const sessionId = localStorage.getItem('sessionId')
     setSaving(true)
     try {
       await fetch('/api/preferences', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(sessionId ? { 'x-session-id': sessionId } : {})
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify(data),
@@ -125,9 +177,10 @@ export default function PreferencesPage() {
 
   const toggleService = (serviceId: string) => {
     const current = user.streamingServices || []
-    const updated = current.includes(serviceId)
-      ? current.filter(id => id !== serviceId)
-      : [...current, serviceId]
+    const exists = current.some(s => (typeof s === 'string' ? s : s.id) === serviceId)
+    const updated = exists
+      ? current.filter(s => (typeof s === 'string' ? s : s.id) !== serviceId)
+      : [...current, { id: serviceId, name: getServiceName(serviceId) }]
     savePreferences({ streamingServices: updated })
   }
 
@@ -149,14 +202,12 @@ export default function PreferencesPage() {
   }
 
   const removeLike = async (tmdbId: number, mediaType: string) => {
-    const sessionId = localStorage.getItem('sessionId')
     setSaving(true)
     try {
       await fetch('/api/preferences', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(sessionId ? { 'x-session-id': sessionId } : {})
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({ removeLike: { tmdbId, mediaType } }),
@@ -170,12 +221,10 @@ export default function PreferencesPage() {
   }
 
   const generateApiKey = async () => {
-    const sessionId = localStorage.getItem('sessionId')
     setApiKeyLoading(true)
     try {
       const res = await fetch('/api/auth/api-key', {
         method: 'POST',
-        headers: sessionId ? { 'x-session-id': sessionId } : {},
         credentials: 'include',
       })
       if (res.ok) {
@@ -189,7 +238,6 @@ export default function PreferencesPage() {
   }
 
   const revokeApiKey = async () => {
-    const sessionId = localStorage.getItem('sessionId')
     if (!confirm('Are you sure you want to revoke your API key? Any applications using it will lose access.')) {
       return
     }
@@ -197,7 +245,6 @@ export default function PreferencesPage() {
     try {
       const res = await fetch('/api/auth/api-key', {
         method: 'DELETE',
-        headers: sessionId ? { 'x-session-id': sessionId } : {},
         credentials: 'include',
       })
       if (res.ok) {
@@ -222,18 +269,68 @@ export default function PreferencesPage() {
 
       <div className="section">
         <h2 className="section-title" style={{ marginBottom: '16px' }}>Streaming Services</h2>
-        <div className="checkbox-group" style={{ marginBottom: '16px' }}>
-          {defaultServices.map(service => (
-            <span
-              key={service.id}
-              className={`checkbox-item ${isSelected(service.id) ? 'selected' : ''}`}
-              onClick={() => !saving && toggleService(service.id)}
-              style={{ cursor: saving ? 'wait' : 'pointer' }}
-            >
-              {service.name}
-            </span>
-          ))}
-        </div>
+        {selectedServices.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+            {selectedServices.map(service => {
+              const info = getProviderInfo(service.id)
+              const name = service.name || info?.name || service.id
+              if (!info && !service.name) return null
+              return (
+                <span
+                  key={service.id}
+                  className="selected-service-item"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 8px 6px 12px',
+                    borderRadius: '20px',
+                    border: '1px solid var(--accent)',
+                    background: 'var(--accent)',
+                    color: 'var(--bg-primary)',
+                    fontSize: '13px',
+                  }}
+                >
+                  {getLogoUrl(info) && (
+                    <img 
+                      src={getLogoUrl(info) || undefined}
+                      alt="" 
+                      style={{ width: '20px', height: '20px', borderRadius: '4px' }}
+                    />
+                  )}
+                  {name}
+                  <button
+                    onClick={() => !saving && toggleService(service.id)}
+                    disabled={saving}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '18px',
+                      height: '18px',
+                      padding: 0,
+                      border: 'none',
+                      borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.2)',
+                      color: 'inherit',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      cursor: saving ? 'wait' : 'pointer',
+                      lineHeight: 1,
+                    }}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </span>
+              )
+            })}
+          </div>
+        ) : (
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '14px' }}>
+            No streaming services selected. Search below to add some.
+          </p>
+        )}
         <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
@@ -261,7 +358,7 @@ export default function PreferencesPage() {
               return (
                 <span
                   key={provider.provider_id}
-                  className={`provider-item ${selected ? 'selected grayed' : ''}`}
+                  className="provider-item grayed"
                   onClick={() => !saving && !selected && toggleService(providerId)}
                   style={{ 
                     cursor: selected ? 'default' : (saving ? 'wait' : 'pointer'),
@@ -329,34 +426,58 @@ export default function PreferencesPage() {
 
       <div className="section">
         <h2 className="section-title" style={{ marginBottom: '16px' }}>Liked Movies & Shows</h2>
-        {user.likes && user.likes.length > 0 ? (
+        {likesWithPosters && likesWithPosters.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {user.likes.map(like => (
-              <div key={like.tmdbId} style={{ display: 'inline-flex', alignItems: 'center', gap: '0' }}>
-                <span className="badge" style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, margin: 0, border: '1px solid var(--border-color)', borderRight: 'none' }}>
+            {likesWithPosters.map(like => (
+              <span
+                key={like.tmdbId}
+                className="selected-service-item"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 8px 6px 12px',
+                  borderRadius: '20px',
+                  border: '1px solid var(--accent)',
+                  background: 'var(--accent)',
+                  color: 'var(--bg-primary)',
+                  fontSize: '13px',
+                }}
+              >
+                {like.posterPath && (
+                  <img 
+                    src={`https://image.tmdb.org/t/p/w45${like.posterPath}`}
+                    alt="" 
+                    style={{ width: '20px', height: '30px', borderRadius: '4px', objectFit: 'cover' }}
+                  />
+                )}
+                <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {like.title}
                 </span>
                 <button
                   onClick={() => !saving && removeLike(like.tmdbId, like.mediaType)}
                   disabled={saving}
                   style={{
-                    padding: '4px 8px',
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    cursor: saving ? 'wait' : 'pointer',
-                    border: '1px solid var(--border-color)',
-                    borderLeft: 'none',
-                    background: 'var(--surface)',
-                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '18px',
+                    height: '18px',
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.2)',
+                    color: 'inherit',
                     fontSize: '14px',
                     fontWeight: 'bold',
+                    cursor: saving ? 'wait' : 'pointer',
                     lineHeight: 1,
                   }}
                   title="Remove"
                 >
                   ×
                 </button>
-              </div>
+              </span>
             ))}
           </div>
         ) : (

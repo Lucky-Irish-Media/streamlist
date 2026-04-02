@@ -73,9 +73,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .set({ rankings: JSON.stringify(rankings) })
       .where(eq(schema.groupPollVotes.id, existingVote.id))
   } else {
+    const { nanoid } = await import('nanoid')
     await db
       .insert(schema.groupPollVotes)
       .values({
+        id: nanoid(16),
         pollId: poll.id,
         userId,
         rankings: JSON.stringify(rankings),

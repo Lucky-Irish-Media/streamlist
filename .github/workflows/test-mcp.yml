@@ -1,0 +1,79 @@
+name: Test MCP Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API Base URL'
+        required: true
+        default: 'https://preview.streamlist-40n.pages.dev'
+      api_key:
+        description: 'API Key'
+        required: true
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test MCP Tools
+        run: |
+          API_KEY=${{ secrets.STREAMLIST_API_KEY || github.event.inputs.api_key }}
+          BASE_URL=${{ github.event.inputs.api_url || 'https://preview.streamlist-40n.pages.dev' }}
+          
+          call_tool() {
+            local name="$1"
+            local args="$2"
+            echo "Testing: $name"
+            response=$(curl -s -H "x-api-key: $API_KEY" -X POST "$BASE_URL/api/mcp" \
+              -H "Content-Type: application/json" \
+              -d "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"$name\",\"arguments\":$args},\"id\":1}")
+            
+            if echo "$response" | grep -q '"error"'; then
+              echo "  ERROR: $(echo "$response" | grep -o '"message":"[^"]*"' | head -1)"
+              exit 1
+            else
+              echo "  OK"
+            fi
+          }
+
+          # Watchlist
+          call_tool "get_watchlist" "{}"
+          call_tool "add_to_watchlist" "{\"tmdb_id\": 550, \"media_type\": \"movie\"}"
+          call_tool "remove_from_watchlist" "{\"tmdb_id\": 550}"
+
+          # Preferences
+          call_tool "get_preferences" "{}"
+          call_tool "update_streaming_services" "{\"services\": [{\"id\": \"8\", \"name\": \"Netflix\"}]}"
+          call_tool "update_genres" "{\"genres\": [28, 12]}"
+          call_tool "update_country" "{\"countries\": [\"US\"]}"
+
+          # Likes
+          call_tool "add_like" "{\"tmdb_id\": 550, \"media_type\": \"movie\", \"title\": \"Fight Club\"}"
+          call_tool "remove_like" "{\"tmdb_id\": 550}"
+
+          # Watch History
+          call_tool "get_watch_history" "{}"
+          call_tool "mark_as_watched" "{\"tmdb_id\": 550, \"media_type\": \"movie\", \"title\": \"Fight Club\"}"
+          call_tool "remove_from_watch_history" "{\"tmdb_id\": 550}"
+
+          # Discovery
+          call_tool "search_media" "{\"query\": \"Inception\"}"
+          call_tool "get_media_details" "{\"tmdb_id\": 550, \"media_type\": \"movie\"}"
+          call_tool "get_trending" "{\"media_type\": \"movie\"}"
+          call_tool "get_recommendations" "{}"
+          call_tool "get_watch_providers" "{\"tmdb_id\": 550, \"media_type\": \"movie\"}"
+
+          # Groups (skip in CI - requires existing group)
+          # call_tool "list_groups" "{}"
+          # call_tool "create_group" "{\"name\": \"Test Group\"}"
+
+          # Access Codes
+          call_tool "verify_access_code" "{\"code\": \"INVALID\"}"
+
+          echo "All tests passed!"

@@ -499,6 +499,7 @@ input:focus, textarea:focus {
 .modal-action-icons {
   display: flex;
   gap: 8px;
+  margin-left: auto;
 }
 
 .back-btn {

@@ -4,7 +4,7 @@ import { getSessionUser } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq, and } from 'drizzle-orm'
-import { discoverMovies, discoverTVShows, getImageUrl } from '@/lib/tmdb'
+import { discoverMovies, discoverTVShows, getImageUrl, getTMDBConfig } from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
@@ -21,6 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: groupId } = await params
   const { env } = getRequestContext()
   const dbEnv = { DB: (env as any)?.DB }
+  const tmdb = getTMDBConfig(env as any)
 
   const userId = await getAuthenticatedUser(req, dbEnv)
   if (!userId) {
@@ -134,14 +135,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           with_genres: genreStr,
           sort_by: 'popularity.desc',
           page: String(Math.floor(Math.random() * 5) + 1),
-        })
+        }, tmdb)
       )
       fetchPromises.push(
         discoverTVShows({
           with_genres: genreStr,
           sort_by: 'popularity.desc',
           page: String(Math.floor(Math.random() * 5) + 1),
-        })
+        }, tmdb)
       )
     }
 
