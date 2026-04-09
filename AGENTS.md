@@ -13,12 +13,9 @@ npm run start       # Start production server
 
 ### Deployment
 ```bash
-npm run build
-```
-
-To deploy to preview (use `--branch preview`):
-```bash
-npx wrangler pages deploy .vercel/output/static --branch preview --commit-dirty=true
+npm run preview   # Build + deploy to preview
+npm run deploy    # Build + deploy to preview (shorthand)
+npm run deploy:prod  # Build + deploy to production
 ```
 
 To deploy to production (use `--branch main`):

@@ -48,11 +48,27 @@ async function getCertification(mediaType: string, id: number, country: string, 
 
 export const runtime = 'edge'
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'content-type, x-api-key',
+}
+
 interface JsonRpcRequest {
   jsonrpc: '2.0'
   id: string | number | null
   method: string
   params?: Record<string, unknown>
+}
+
+function createSSEStream(data: string, event: string = 'message'): ReadableStream {
+  const encoder = new TextEncoder()
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`))
+      controller.close()
+    },
+  })
 }
 
 async function getUserByApiKey(db: DB, apiKey: string): Promise<string | null> {
@@ -990,17 +1006,12 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
   }
 }
 
-export async function POST(req: NextRequest) {
-  const { env } = getRequestContext()
-  const dbEnv = { DB: (env as any)?.DB }
-  const db = getDB(dbEnv)
-  const tmdb = getTMDBConfig(env as any)
-
+async function authenticateRequest(req: NextRequest, db: DB): Promise<{ userId: string } | NextResponse> {
   const apiKey = req.headers.get('x-api-key')
   if (!apiKey) {
     return NextResponse.json(
       { jsonrpc: '2.0', error: { code: -32601, message: 'Missing x-api-key header' }, id: null },
-      { status: 401 }
+      { status: 401, headers: CORS_HEADERS }
     )
   }
 
@@ -1008,9 +1019,27 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json(
       { jsonrpc: '2.0', error: { code: -32601, message: 'Invalid API key' }, id: null },
-      { status: 401 }
+      { status: 401, headers: CORS_HEADERS }
     )
   }
+
+  return { userId }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+}
+
+export async function POST(req: NextRequest) {
+  const { env } = getRequestContext()
+  const dbEnv = { DB: (env as any)?.DB }
+  const db = getDB(dbEnv)
+
+  const authResult = await authenticateRequest(req, db)
+  if (authResult instanceof NextResponse) {
+    return authResult
+  }
+  const { userId } = authResult
 
   let body: JsonRpcRequest
   try {
@@ -1018,14 +1047,14 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json(
       { jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null },
-      { status: 400 }
+      { status: 400, headers: CORS_HEADERS }
     )
   }
 
   if (body.jsonrpc !== '2.0') {
     return NextResponse.json(
       { jsonrpc: '2.0', error: { code: -32600, message: 'Invalid Request' }, id: body.id ?? null },
-      { status: 400 }
+      { status: 400, headers: CORS_HEADERS }
     )
   }
 
@@ -1034,28 +1063,98 @@ export async function POST(req: NextRequest) {
   if (method !== 'tools/call') {
     return NextResponse.json(
       { jsonrpc: '2.0', error: { code: -32601, message: 'Method not found' }, id },
-      { status: 400 }
+      { status: 400, headers: CORS_HEADERS }
     )
   }
 
   const { name, arguments: args } = params as { name: string; arguments?: Record<string, unknown> }
 
+  const acceptHeader = req.headers.get('accept')
+  const wantsSSE = acceptHeader?.includes('text/event-stream')
+
+  const tmdb = getTMDBConfig(env as any)
+
   try {
     const result = await handleTool(db, userId, name, args, tmdb)
-    return NextResponse.json({
+    const responseBody = {
       jsonrpc: '2.0',
       result: { content: [{ type: 'text', text: JSON.stringify(result) }] },
       id,
-    })
+    }
+
+    if (wantsSSE) {
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`event: message\ndata: ${JSON.stringify(responseBody)}\n\n`))
+          controller.close()
+        },
+      })
+
+      return new Response(stream, {
+        headers: {
+          ...CORS_HEADERS,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    }
+
+    return NextResponse.json(responseBody, { headers: CORS_HEADERS })
   } catch (error) {
-    return NextResponse.json(
-      { jsonrpc: '2.0', error: { code: -32603, message: String(error) }, id },
-      { status: 500 }
-    )
+    const errorResponse = {
+      jsonrpc: '2.0',
+      error: { code: -32603, message: String(error) },
+      id,
+    }
+
+    if (wantsSSE) {
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`event: message\ndata: ${JSON.stringify(errorResponse)}\n\n`))
+          controller.close()
+        },
+      })
+
+      return new Response(stream, {
+        headers: {
+          ...CORS_HEADERS,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    }
+
+    return NextResponse.json(errorResponse, { status: 500, headers: CORS_HEADERS })
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const acceptHeader = req.headers.get('accept')
+
+  if (acceptHeader?.includes('text/event-stream')) {
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      start(controller) {
+        const sessionId = crypto.randomUUID()
+        controller.enqueue(encoder.encode(`event: connect\ndata: {"sessionId":"${sessionId}"}\n\n`))
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        ...CORS_HEADERS,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    })
+  }
+
   const tools = [
     { name: 'get_watchlist', description: 'Get all items in the user\'s watchlist', inputSchema: { type: 'object', properties: {} } },
     { name: 'add_to_watchlist', description: 'Add a movie or TV show to the watchlist', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
@@ -1093,5 +1192,5 @@ export async function GET() {
     name: 'streamlist-mcp-server',
     version: '1.0.0',
     tools,
-  })
+  }, { headers: CORS_HEADERS })
 }
