@@ -448,7 +448,7 @@ export function Header() {
                 <Link href="/browse">Browse</Link>
                 <Link href="/watchlist">Watchlist</Link>
                 <Link href="/groups">Groups</Link>
-                <Link href="/preferences">Preferences</Link>
+                <Link href="/user">Profile</Link>
                 <button onClick={logout} className="btn-secondary">Logout</button>
               </>
             ) : (
@@ -483,9 +483,9 @@ export function Header() {
               <span className="mobile-nav-icon"><Users size={20} /></span>
               <span>Groups</span>
             </Link>
-            <Link href="/preferences" className={pathname === '/preferences' ? 'active' : ''}>
+            <Link href="/user" className={pathname === '/user' ? 'active' : ''}>
               <span className="mobile-nav-icon"><Settings size={20} /></span>
-              <span>Prefs</span>
+              <span>Profile</span>
             </Link>
           </div>
         </nav>
