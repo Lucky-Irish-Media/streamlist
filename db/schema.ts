@@ -101,3 +101,12 @@ export const accessCodes = sqliteTable('access_codes', {
   expiresAt: integer('expires_at', { mode: 'timestamp' }),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().$defaultFn(() => true),
 })
+
+export const userNotes = sqliteTable('user_notes', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
+  mediaType: text('media_type').notNull(),
+  note: text('note').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})

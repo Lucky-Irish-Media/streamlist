@@ -7,12 +7,14 @@ import {
 import { drizzle } from 'drizzle-orm/d1'
 import { eq, and } from 'drizzle-orm'
 import * as schema from '@/db/schema'
+import { searchMulti, type TMDBConfig } from '@/lib/tmdb'
 
 type DB = ReturnType<typeof drizzle>
 
 interface Context {
   env: {
     DB: any
+    TMDB_API_KEY?: string
   }
   userId: string
 }
@@ -52,14 +54,14 @@ const tools = {
   },
   add_to_watchlist: {
     name: 'add_to_watchlist',
-    description: 'Add a movie or TV show to the watchlist',
+    description: 'Add a movie or TV show to the watchlist by searching TMDB',
     inputSchema: {
       type: 'object',
       properties: {
-        tmdb_id: { type: 'number', description: 'The TMDB ID of the movie or TV show' },
-        media_type: { type: 'string', enum: ['movie', 'tv'], description: 'The type of media (movie or tv)' },
+        query: { type: 'string', description: 'Search query for the movie or TV show title' },
+        media_type: { type: 'string', enum: ['movie', 'tv'], description: 'Optional: Filter by media type if query matches multiple items' },
       },
-      required: ['tmdb_id', 'media_type'],
+      required: ['query'],
     },
   },
   remove_from_watchlist: {
@@ -188,9 +190,47 @@ async function handleGetWatchlist(): Promise<{ content: Array<{ type: string; te
   }
 }
 
-async function handleAddToWatchlist(tmdbId: number, mediaType: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+async function handleAddToWatchlist(query: string, mediaType?: string): Promise<{ content: Array<{ type: string; text: string }> }> {
   const ctx = getContext()
   const database = getDb(ctx.env)
+
+  const tmdbConfig: TMDBConfig | undefined = ctx.env.TMDB_API_KEY ? { apiKey: ctx.env.TMDB_API_KEY } : undefined
+  
+  if (!tmdbConfig) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: false, message: 'TMDB API key not configured' }) }],
+    }
+  }
+
+  const searchResults = await searchMulti(query, 1, tmdbConfig)
+  const candidates = searchResults.results.filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
+  
+  if (candidates.length === 0) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: false, message: `No results found for "${query}"` }) }],
+    }
+  }
+
+  let match: any = candidates[0]
+  if (mediaType) {
+    const typedMatch = candidates.find((c: any) => c.media_type === mediaType)
+    if (typedMatch) {
+      match = typedMatch
+    } else {
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: false,
+            message: `No ${mediaType} found for "${query}". Found: ${candidates.map((c: any) => `${c.title || c.name} (${c.media_type})`).join(', ')}`
+          })
+        }],
+      }
+    }
+  }
+
+  const tmdbId = match.id
+  const resolvedMediaType = match.media_type
 
   const existing = await database
     .select()
@@ -205,18 +245,18 @@ async function handleAddToWatchlist(tmdbId: number, mediaType: string): Promise<
 
   if (existing) {
     return {
-      content: [{ type: 'text', text: JSON.stringify({ success: false, message: 'Already in watchlist' }) }],
+      content: [{ type: 'text', text: JSON.stringify({ success: false, message: `${match.title || match.name} already in watchlist` }) }],
     }
   }
 
   await database.insert(schema.watchlist).values({
     userId: ctx.userId,
     tmdbId,
-    mediaType,
+    mediaType: resolvedMediaType,
   }).run()
 
   return {
-    content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Added to watchlist' }) }],
+    content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Added "${match.title || match.name}" to watchlist` }) }],
   }
 }
 
@@ -586,7 +626,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'get_watchlist':
         return await handleGetWatchlist()
       case 'add_to_watchlist':
-        return await handleAddToWatchlist(args.tmdb_id as number, args.media_type as string)
+        return await handleAddToWatchlist(args.query as string, args.media_type as string | undefined)
       case 'remove_from_watchlist':
         return await handleRemoveFromWatchlist(args.tmdb_id as number)
       case 'get_preferences':

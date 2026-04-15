@@ -133,7 +133,28 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
       return items
     }
     case 'add_to_watchlist': {
-      const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+      const { query, media_type } = args as { query: string; media_type?: string }
+      const searchResults = await searchMulti(query, 1, tmdb)
+      const candidates = searchResults.results.filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
+      
+      if (candidates.length === 0) {
+        return { success: false, message: `No results found for "${query}"` }
+      }
+
+      let match: any = candidates[0]
+      if (media_type) {
+        const typedMatch = candidates.find((c: any) => c.media_type === media_type)
+        if (typedMatch) {
+          match = typedMatch
+        } else {
+          return { 
+            success: false, 
+            message: `No ${media_type} found for "${query}". Found: ${candidates.map((c: any) => `${c.title || c.name} (${c.media_type})`).join(', ')}` 
+          }
+        }
+      }
+
+      const tmdb_id = match.id
       const existing = await db
         .select()
         .from(schema.watchlist)
@@ -145,14 +166,14 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
         )
         .get()
       if (existing) {
-        return { success: false, message: 'Already in watchlist' }
+        return { success: false, message: `${match.title || match.name} already in watchlist` }
       }
       await db.insert(schema.watchlist).values({
         userId,
         tmdbId: tmdb_id,
-        mediaType: media_type,
+        mediaType: match.media_type,
       }).run()
-      return { success: true, message: 'Added to watchlist' }
+      return { success: true, message: `Added "${match.title || match.name}" to watchlist` }
     }
     case 'remove_from_watchlist': {
       const { tmdb_id } = args as { tmdb_id: number }
@@ -1001,6 +1022,77 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
 
       return { valid: true, message: 'Code is valid' }
     }
+    case 'get_note': {
+      const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+
+      const note = await db
+        .select()
+        .from(schema.userNotes)
+        .where(
+          and(
+            eq(schema.userNotes.userId, userId),
+            eq(schema.userNotes.tmdbId, tmdb_id),
+            eq(schema.userNotes.mediaType, media_type)
+          )
+        )
+        .get()
+
+      if (!note) {
+        return { note: null }
+      }
+
+      return { note: note.note, updatedAt: note.updatedAt }
+    }
+    case 'add_note': {
+      const { tmdb_id, media_type, note } = args as { tmdb_id: number; media_type: string; note: string }
+
+      const existing = await db
+        .select()
+        .from(schema.userNotes)
+        .where(
+          and(
+            eq(schema.userNotes.userId, userId),
+            eq(schema.userNotes.tmdbId, tmdb_id),
+            eq(schema.userNotes.mediaType, media_type)
+          )
+        )
+        .get()
+
+      if (existing) {
+        await db
+          .update(schema.userNotes)
+          .set({ note, updatedAt: new Date() })
+          .where(eq(schema.userNotes.id, existing.id))
+          .run()
+      } else {
+        const { nanoid } = await import('nanoid')
+        await db.insert(schema.userNotes).values({
+          id: nanoid(),
+          userId,
+          tmdbId: tmdb_id,
+          mediaType: media_type,
+          note,
+        }).run()
+      }
+
+      return { success: true, message: 'Note saved' }
+    }
+    case 'delete_note': {
+      const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+
+      await db
+        .delete(schema.userNotes)
+        .where(
+          and(
+            eq(schema.userNotes.userId, userId),
+            eq(schema.userNotes.tmdbId, tmdb_id),
+            eq(schema.userNotes.mediaType, media_type)
+          )
+        )
+        .run()
+
+      return { success: true, message: 'Note deleted' }
+    }
     default:
       return { error: `Unknown tool: ${toolName}` }
   }
@@ -1157,7 +1249,7 @@ export async function GET(req: NextRequest) {
 
   const tools = [
     { name: 'get_watchlist', description: 'Get all items in the user\'s watchlist', inputSchema: { type: 'object', properties: {} } },
-    { name: 'add_to_watchlist', description: 'Add a movie or TV show to the watchlist', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
+    { name: 'add_to_watchlist', description: 'Add a movie or TV show to the watchlist by searching TMDB', inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Search query for the movie or TV show title' }, media_type: { type: 'string', enum: ['movie', 'tv'], description: 'Optional: Filter by media type if query matches multiple items' } }, required: ['query'] } },
     { name: 'remove_from_watchlist', description: 'Remove a movie or TV show from the watchlist', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
     { name: 'get_preferences', description: 'Get user preferences including streaming services, genres, likes, and countries', inputSchema: { type: 'object', properties: {} } },
     { name: 'update_streaming_services', description: 'Update the user\'s preferred streaming services', inputSchema: { type: 'object', properties: { services: { type: 'array', items: { type: 'string' } } }, required: ['services'] } },
@@ -1186,6 +1278,9 @@ export async function GET(req: NextRequest) {
     { name: 'list_group_polls', description: 'List all polls in a group', inputSchema: { type: 'object', properties: { group_id: { type: 'string' } }, required: ['group_id'] } },
     { name: 'create_access_code', description: 'Create a signup access code (admin only)', inputSchema: { type: 'object', properties: { code: { type: 'string' }, expires_days: { type: 'number' } } } },
     { name: 'verify_access_code', description: 'Verify an access code for signup', inputSchema: { type: 'object', properties: { code: { type: 'string' } }, required: ['code'] } },
+    { name: 'get_note', description: 'Get user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
+    { name: 'add_note', description: 'Add or update a user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, note: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'note'] } },
+    { name: 'delete_note', description: 'Delete a user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
   ]
 
   return NextResponse.json({

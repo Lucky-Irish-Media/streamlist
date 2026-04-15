@@ -57,6 +57,10 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [currentMovieId, setCurrentMovieId] = useState(item.id)
   const [currentMediaType, setCurrentMediaType] = useState(item.media_type || item.mediaType || 'movie')
   const [collectionHistory, setCollectionHistory] = useState<{ id: number; mediaType: string }[]>([])
+  const [note, setNote] = useState('')
+  const [hasNote, setHasNote] = useState(false)
+  const [loadingNote, setLoadingNote] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
   
   const mediaType = item.media_type || item.mediaType || 'movie'
   const isNavigated = collectionHistory.length > 0
@@ -114,6 +118,72 @@ export default function MediaCard({ item }: MediaCardProps) {
       .catch(() => {})
   }, [item.id, mediaType, user?.countries])
 
+  const fetchNote = async () => {
+    if (!user) return
+    setLoadingNote(true)
+    try {
+      const res = await fetch(`/api/notes?tmdbId=${currentMovieId}&mediaType=${currentMediaType}`, {
+        credentials: 'include'
+      })
+      const data = await res.json()
+      if (data.note) {
+        setNote(data.note.note)
+        setHasNote(true)
+      } else {
+        setNote('')
+        setHasNote(false)
+      }
+    } catch {
+      setNote('')
+      setHasNote(false)
+    } finally {
+      setLoadingNote(false)
+    }
+  }
+
+  const saveNote = async () => {
+    if (!user) return
+    setSavingNote(true)
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType, note }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setHasNote(note.length > 0)
+      }
+    } catch {
+      console.error('Failed to save note')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
+  const deleteNote = async () => {
+    if (!user) return
+    setSavingNote(true)
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNote('')
+        setHasNote(false)
+      }
+    } catch {
+      console.error('Failed to delete note')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
   const openModal = async (movieId?: number, mediaTypeOverride?: string) => {
     const targetId = movieId ?? currentMovieId
     const targetMediaType = mediaTypeOverride ?? currentMediaType
@@ -132,6 +202,7 @@ export default function MediaCard({ item }: MediaCardProps) {
     }
     if (!showModal) {
       setShowModal(true)
+      fetchNote()
     }
   }
 
@@ -142,6 +213,8 @@ export default function MediaCard({ item }: MediaCardProps) {
     setCurrentMovieId(item.id)
     setCurrentMediaType(item.media_type || item.mediaType || 'movie')
     setCollectionHistory([])
+    setNote('')
+    setHasNote(false)
   }
 
   const navigateToMovie = (movieId: number, mediaType: string) => {
@@ -321,6 +394,11 @@ export default function MediaCard({ item }: MediaCardProps) {
             >
               <FileText size={16} />
             </button>
+            {hasNote && (
+              <span className="note-indicator" title="Has note">
+                <FileText size={12} />
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -470,6 +548,40 @@ export default function MediaCard({ item }: MediaCardProps) {
                     )}
                   </div>
                 )}
+                <div className="modal-note">
+                  <h3>My Notes</h3>
+                  {loadingNote ? (
+                    <p className="note-loading">Loading...</p>
+                  ) : (
+                    <>
+                      <textarea
+                        className="note-textarea"
+                        placeholder="Write your thoughts about this title..."
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        rows={4}
+                      />
+                      <div className="note-actions">
+                        <button
+                          className="note-save-btn"
+                          onClick={saveNote}
+                          disabled={savingNote}
+                        >
+                          {savingNote ? 'Saving...' : 'Save Note'}
+                        </button>
+                        {hasNote && (
+                          <button
+                            className="note-delete-btn"
+                            onClick={deleteNote}
+                            disabled={savingNote}
+                          >
+                            Delete Note
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
               <div>Failed to load details</div>
