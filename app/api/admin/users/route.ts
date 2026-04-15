@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getUserFromSession, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
-import { eq } from 'drizzle-orm'
+import { eq, desc, count } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 export const runtime = 'edge'
@@ -28,14 +28,29 @@ export async function GET(req: NextRequest) {
   const db = getDB(dbEnv)
   const users = await db.select().from(schema.users).all()
 
-  return NextResponse.json({ users: users.map(u => ({
-    id: u.id,
-    username: u.username,
-    createdAt: u.createdAt,
-    countries: u.countries,
-    hasApiKey: !!u.apiKey,
-    isAdmin: u.isAdmin,
-  })) })
+  const usersWithDetails = await Promise.all(users.map(async (u) => {
+    const [sessionCount, loginAttemptsCount, lastLogin, watchlistCount] = await Promise.all([
+      db.select({ count: count() }).from(schema.sessions).where(eq(schema.sessions.userId, u.id)).get(),
+      db.select({ count: count() }).from(schema.loginAttempts).where(eq(schema.loginAttempts.username, u.username)).get(),
+      db.select().from(schema.loginAttempts).where(eq(schema.loginAttempts.username, u.username)).orderBy(desc(schema.loginAttempts.createdAt)).limit(1).get(),
+      db.select({ count: count() }).from(schema.watchlist).where(eq(schema.watchlist.userId, u.id)).get(),
+    ])
+
+    return {
+      id: u.id,
+      username: u.username,
+      createdAt: u.createdAt,
+      countries: u.countries,
+      hasApiKey: !!u.apiKey,
+      isAdmin: u.isAdmin,
+      sessionCount: sessionCount?.count || 0,
+      loginCount: loginAttemptsCount?.count || 0,
+      lastLogin: lastLogin?.createdAt || null,
+      watchlistCount: watchlistCount?.count || 0,
+    }
+  }))
+
+  return NextResponse.json({ users: usersWithDetails })
 }
 
 export async function DELETE(req: NextRequest) {

@@ -10,6 +10,10 @@ interface User {
   countries: string
   hasApiKey: boolean
   isAdmin: boolean
+  sessionCount: number
+  loginCount: number
+  lastLogin: string | null
+  watchlistCount: number
 }
 
 export default function AdminUsersPage() {
@@ -101,7 +105,10 @@ export default function AdminUsersPage() {
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Username</th>
                 <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Created</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Countries</th>
+                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Logins</th>
+                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Last Login</th>
+                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Sessions</th>
+                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Watchlist</th>
                 <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>API Key</th>
                 <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Admin</th>
                 <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Actions</th>
@@ -114,9 +121,12 @@ export default function AdminUsersPage() {
                   <td style={{ padding: '12px' }}>
                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                   </td>
+                  <td style={{ padding: '12px' }}>{user.loginCount}</td>
                   <td style={{ padding: '12px' }}>
-                    {user.countries ? JSON.parse(user.countries).join(', ') : '-'}
+                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '-'}
                   </td>
+                  <td style={{ padding: '12px' }}>{user.sessionCount}</td>
+                  <td style={{ padding: '12px' }}>{user.watchlistCount}</td>
                   <td style={{ padding: '12px' }}>
                     {user.hasApiKey ? (
                       <button

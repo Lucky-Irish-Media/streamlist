@@ -51,6 +51,19 @@ export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  endedAt: integer('ended_at', { mode: 'timestamp' }),
+})
+
+export const loginAttempts = sqliteTable('login_attempts', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  success: integer('success', { mode: 'boolean' }).notNull(),
+  failureReason: text('failure_reason'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 
 export const userGroups = sqliteTable('user_groups', {

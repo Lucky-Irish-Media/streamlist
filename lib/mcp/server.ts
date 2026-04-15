@@ -5,7 +5,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { drizzle } from 'drizzle-orm/d1'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, gt } from 'drizzle-orm'
 import * as schema from '@/db/schema'
 import { searchMulti, type TMDBConfig } from '@/lib/tmdb'
 
@@ -168,6 +168,42 @@ const tools = {
         group_id: { type: 'string', description: 'The ID of the group' },
       },
       required: ['group_id'],
+    },
+  },
+  get_user_activity: {
+    name: 'get_user_activity',
+    description: 'Query login history for a specific user (admin only)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        user_id: { type: 'string', description: 'The ID of the user to get activity for' },
+        limit: { type: 'number', description: 'Number of records to return (default 50)' },
+        offset: { type: 'number', description: 'Number of records to skip (default 0)' },
+      },
+      required: ['user_id'],
+    },
+  },
+  get_failed_login_attempts: {
+    name: 'get_failed_login_attempts',
+    description: 'List failed login attempts with optional filters (admin only)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        start_date: { type: 'string', description: 'ISO date string to filter by start date' },
+        end_date: { type: 'string', description: 'ISO date string to filter by end date' },
+        limit: { type: 'number', description: 'Number of records to return (default 50)' },
+        offset: { type: 'number', description: 'Number of records to skip (default 0)' },
+      },
+    },
+  },
+  get_login_stats: {
+    name: 'get_login_stats',
+    description: 'Get aggregate login statistics: daily logins, unique users, failure rate (admin only)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Number of days to look back (default 30)' },
+      },
     },
   },
 }
@@ -600,6 +636,93 @@ async function handleGetGroupWatchlist(groupId: string): Promise<{ content: Arra
   }
 }
 
+async function handleGetUserActivity(userId: string, limit = 50, offset = 0): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const user = await database
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .get()
+
+  if (!user) {
+    return { content: [{ type: 'text', text: JSON.stringify({ error: 'User not found' }) }] }
+  }
+
+  const sessions = await database
+    .select()
+    .from(schema.sessions)
+    .where(eq(schema.sessions.userId, userId))
+    .orderBy(schema.sessions.expiresAt)
+    .limit(limit)
+    .offset(offset)
+    .all()
+
+  const attempts = await database
+    .select()
+    .from(schema.loginAttempts)
+    .where(eq(schema.loginAttempts.username, user.username))
+    .orderBy(schema.loginAttempts.createdAt)
+    .limit(limit)
+    .offset(offset)
+    .all()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ sessions, attempts }) }],
+  }
+}
+
+async function handleGetFailedLoginAttempts(startDate?: string, endDate?: string, limit = 50, offset = 0): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const start = startDate ? new Date(startDate) : undefined
+  const end = endDate ? new Date(endDate) : undefined
+
+  const attempts = await database
+    .select()
+    .from(schema.loginAttempts)
+    .where(eq(schema.loginAttempts.success, false))
+    .orderBy(schema.loginAttempts.createdAt)
+    .limit(limit)
+    .offset(offset)
+    .all()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ attempts }) }],
+  }
+}
+
+async function handleGetLoginStats(days = 30): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+  const attempts = await database
+    .select()
+    .from(schema.loginAttempts)
+    .where(gt(schema.loginAttempts.createdAt, since))
+    .all()
+
+  const successful = attempts.filter(a => a.success)
+  const failed = attempts.filter(a => !a.success)
+  const uniqueUsers = new Set(successful.map(a => a.username))
+
+  return {
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        totalLogins: successful.length,
+        uniqueUsers: uniqueUsers.size,
+        failedAttempts: failed.length,
+        failureRate: attempts.length > 0 ? failed.length / attempts.length : 0,
+      }),
+    }],
+  }
+}
+
 export const server = new Server(
   {
     name: 'streamlist-mcp-server',
@@ -651,6 +774,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return groupResult
       case 'get_group_watchlist':
         return await handleGetGroupWatchlist(args.group_id as string)
+      case 'get_user_activity':
+        return await handleGetUserActivity(args.user_id as string, args.limit as number, args.offset as number)
+      case 'get_failed_login_attempts':
+        return await handleGetFailedLoginAttempts(args.start_date as string, args.end_date as string, args.limit as number, args.offset as number)
+      case 'get_login_stats':
+        return await handleGetLoginStats(args.days as number)
       default:
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${name}` }) }],
