@@ -4,18 +4,22 @@ A personal watchlist app for discovering and tracking movies and TV shows. Built
 
 ## Features
 
-- **Browse**: Discover trending, popular, and new release movies and TV shows with filtering and sorting
+- **Browse**: Discover trending, popular, and new release movies and TV shows with filtering and sorting by popularity, rating, or release date
 - **Watchlist**: Add and manage your personal watchlist
 - **Watch History**: Track movies and shows you've watched
-- **Recommendations**: Get personalized recommendations based on your preferences
+- **Recommendations**: Get personalized recommendations based on your preferences and liked content
 - **Preferences**: Configure your favorite streaming services, genres, regions, and likes
-- **Search**: Find movies and TV shows by name with search history
+- **Search**: Find movies and TV shows by name with search history (saved locally)
 - **Groups**: Create groups, invite friends, share watchlists, and run polls to decide what to watch
+- **Notes**: Add personal notes to any movie or TV show
+- **Admin Dashboard**: View platform statistics, user activity, and login analytics
 
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Database**: SQLite (via Drizzle ORM + Cloudflare D1)
+- **Cache**: Cloudflare KV (TMDB API caching)
+- **Workers**: Durable Objects for real-time poll management
 - **API**: The Movie Database (TMDB) API
 - **Runtime**: Edge Runtime (Cloudflare Pages)
 - **Deployment**: Cloudflare Pages
@@ -34,9 +38,9 @@ A personal watchlist app for discovering and tracking movies and TV shows. Built
    ```
 
 2. **Configure environment variables**:
-   Copy `.env.example` to `.env.local`:
+   Create a `.env.local` file:
    ```bash
-   cp .env.example .env.local
+   touch .env.local
    ```
    
    Add your TMDB API key:
@@ -45,18 +49,9 @@ A personal watchlist app for discovering and tracking movies and TV shows. Built
    ```
 
 3. **Set up the database**:
-   
-   Option A - Local development with SQLite:
    ```bash
    npm run db:generate
    npm run db:push
-   ```
-   
-   Option B - Cloudflare D1 (for production):
-   ```bash
-   wrangler d1 create streamlist-db
-   # Update wrangler.toml with your database_id
-   wrangler d1 execute streamlist-db --local=./db/migrations
    ```
 
 4. **Run locally**:
@@ -79,25 +74,37 @@ A personal watchlist app for discovering and tracking movies and TV shows. Built
 | `ACCESS_CODE` | Access code required to create an account (recommended for production) | None |
 | `TMDB_API_BASE_URL` | TMDB API base URL | `https://api.themoviedb.org/3` |
 
-### Cloudflare Pages Variables
+### Cloudflare Bindings
 
-When deploying, set these in your Cloudflare Pages project settings:
-- `TMDB_API_KEY` - Your TMDB API key
-- `ACCESS_CODE` - (optional) Your chosen access code
+The app uses several Cloudflare bindings (configured in `wrangler.toml`):
+
+- `DB` - D1 database for persistent storage
+- `TMDB_CACHE` - KV namespace for caching TMDB API responses
+- `POLL_DO` - Durable Object for poll management
+- `POLL_KV` - KV namespace for poll data
 
 ## Deployment
 
-1. **Deploy to Cloudflare Pages**:
+1. **Deploy to Preview**:
    ```bash
    npm run deploy
    ```
 
-2. **Set up D1 database**:
+2. **Deploy to Production** (requires explicit permission):
    ```bash
-   wrangler d1 execute streamlist-db --remote
+   npm run deploy:prod
    ```
 
-3. **Configure environment variables** in Cloudflare Pages dashboard:
+3. **Database migrations**:
+   ```bash
+   # Preview
+   npx wrangler d1 execute streamlist-preview-db --remote --command="SELECT 1"
+   
+   # Production (requires explicit permission)
+   npx wrangler d1 execute streamlist-db --remote --command="SELECT 1"
+   ```
+
+4. **Configure environment variables** in Cloudflare Pages dashboard:
    - Add `TMDB_API_KEY` with your TMDB API key
    - Optionally add `ACCESS_CODE` for account protection
 
@@ -115,59 +122,36 @@ StreamList includes an MCP (Model Context Protocol) server that allows external 
 
 ### Available Tools
 
-#### Watchlist & History
+#### Watchlist
 | Tool | Description |
 |------|-------------|
 | `get_watchlist` | List all items in your watchlist |
-| `add_to_watchlist` | Add a movie or TV show (`tmdb_id`, `media_type`) |
-| `remove_from_watchlist` | Remove an item from watchlist (`tmdb_id`) |
-| `get_watch_history` | List all watched movies/shows |
-| `mark_as_watched` | Mark as watched (`tmdb_id`, `media_type`, `title`) |
-| `remove_from_watch_history` | Remove from watch history (`tmdb_id`) |
-
-#### Groups (via MCP)
-| Tool | Description |
-|------|-------------|
-| `list_groups` | List all your groups |
-| `create_group` | Create a new group (`name`) |
-| `get_group_watchlist` | Get group watchlist with intersection (`group_id`) |
-| `create_group_invite` | Generate a 7-day invite token (`group_id`) |
-| `join_group` | Join a group using an invite token (`token`) |
-| `get_group_invites` | List active invites for a group (`group_id`, creator only) |
-
-#### Polls (via MCP)
-| Tool | Description |
-|------|-------------|
-| `create_poll` | Create a poll with candidates (`group_id`, `candidates` array) |
-| `vote_on_poll` | Vote on a poll with ranked choices (`poll_id`, `rankings` array) |
-| `get_poll_results` | Get poll results with Borda count scoring (`poll_id`) |
-| `close_poll` | Manually close a poll and record winner (`poll_id`) |
-| `list_group_polls` | List all polls in a group (`group_id`) |
-
-#### Access Codes (via MCP)
-| Tool | Description |
-|------|-------------|
-| `create_access_code` | Create a signup access code (admin only, optional `expires_days`) |
-| `verify_access_code` | Verify an access code for signup (`code`) |
+| `add_to_watchlist` | Add a movie or TV show by search query |
+| `remove_from_watchlist` | Remove an item from watchlist |
 
 #### Preferences
 | Tool | Description |
 |------|-------------|
 | `get_preferences` | Get streaming services, genres, likes, and countries |
-| `update_streaming_services` | Set streaming services (`services` array) |
-| `update_genres` | Set preferred genres (`genres` array) |
-| `update_country` | Set country codes (`countries` array, e.g., `["US", "PT"]`) |
-| `add_like` | Like a movie/show (`tmdb_id`, `media_type`, `title`) |
-| `remove_like` | Unlike a movie/show (`tmdb_id`) |
+| `update_streaming_services` | Set streaming services (requires `{id, name}` objects) |
+| `update_genres` | Set preferred genres (array of genre IDs) |
+| `update_country` | Set country codes (e.g., `["US", "PT"]`) |
+| `add_like` | Like a movie/show |
+| `remove_like` | Unlike a movie/show |
 
-#### Discovery
+#### Groups
 | Tool | Description |
 |------|-------------|
-| `get_recommendations` | Get personalized recommendations based on your likes |
-| `get_trending` | Get trending movies/shows (`media_type`, `page`) |
-| `search_media` | Search for movies/shows (`query`, `page`) |
-| `get_media_details` | Get full details of a movie/show (`tmdb_id`, `media_type`) |
-| `get_watch_providers` | Get streaming providers in your regions (`tmdb_id`, `media_type`) |
+| `list_groups` | List all your groups |
+| `create_group` | Create a new group |
+| `get_group_watchlist` | Get group watchlist with intersection analysis |
+
+#### Admin Tools (admin only)
+| Tool | Description |
+|------|-------------|
+| `get_user_activity` | Get user login/session history |
+| `get_failed_login_attempts` | List failed login attempts |
+| `get_login_stats` | Get aggregate login statistics |
 
 ### API Usage
 
@@ -195,7 +179,7 @@ curl -X POST https://your-domain/api/mcp \
     "method": "tools/call",
     "params": {
       "name": "add_to_watchlist",
-      "arguments": { "tmdb_id": 550, "media_type": "movie" }
+      "arguments": { "query": "Inception", "media_type": "movie" }
     },
     "id": 1
   }'
@@ -214,48 +198,16 @@ curl -X POST https://your-domain/api/mcp \
   }'
 ```
 
-**Example: Get personalized recommendations**
-```bash
-curl -X POST https://your-domain/api/mcp \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "tools/call",
-    "params": { "name": "get_recommendations" },
-    "id": 1
-  }'
-```
+### Using with OpenCode
 
-**Example: Search for a movie**
-```bash
-curl -X POST https://your-domain/api/mcp \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "tools/call",
-    "params": { "name": "search_media", "arguments": { "query": "Inception" } },
-    "id": 1
-  }'
-```
-
-**Example: Get streaming providers**
-```bash
-curl -X POST https://your-domain/api/mcp \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "tools/call",
-    "params": { "name": "get_watch_providers", "arguments": { "tmdb_id": 550, "media_type": "movie" } },
-    "id": 1
-  }'
-```
+1. Generate an API key in Preferences → API Access
+2. Set the `STREAMLIST_API_KEY` environment variable:
+   ```bash
+   export STREAMLIST_API_KEY="your_api_key_here"
+   ```
+3. Update the URL in `opencode.json` to match your deployment
 
 ### Using with Claude Desktop
-
-You can create a custom MCP client config for Claude Desktop:
 
 ```json
 {
@@ -268,30 +220,39 @@ You can create a custom MCP client config for Claude Desktop:
 }
 ```
 
-Or use an MCP client like `mcp-client` to make requests programmatically.
-
 ## Project Structure
 
 ```
 streamlist/
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes
+│   │   ├── admin/         # Admin stats, activity, users, access-codes
 │   │   ├── auth/          # Authentication (login, logout, me, api-key)
+│   │   ├── browse/        # Browse/discover endpoints
 │   │   ├── groups/        # Group management and polls
+│   │   ├── media/         # Media details
 │   │   ├── mcp/           # MCP server endpoint
-│   │   ├── preferences/   # User preferences
-│   │   ├── watchlist/     # Watchlist management
-│   │   └── ...
+│   │   ├── notes/         # User notes for movies/shows
+│   │   ├── preferences/  # User preferences
+│   │   ├── providers/    # Watch providers
+│   │   ├── recommendations/ # Personalized recommendations
+│   │   ├── search/        # Search endpoints
+│   │   ├── watched/      # Watch history
+│   │   └── watchlist/    # Watchlist management
+│   ├── admin/             # Admin dashboard
+│   ├── browse/            # Browse/discover page
 │   ├── groups/            # Groups pages
 │   ├── login/             # Login page
 │   ├── preferences/       # User preferences page
 │   ├── watchlist/         # Watchlist page
-│   ├── browse/            # Browse/discover page
-│   └── globals.css        # Global styles
+│   └── user/              # User account page
 ├── components/            # React components (MediaCard, UserContext, etc.)
 ├── db/                    # Database schema and migrations
-├── lib/                   # Utilities (auth, db, tmdb, mcp)
+├── lib/                   # Utilities (auth, db, tmdb, mcp, kv)
+│   └── durable/           # Durable Object classes
 ├── types/                 # TypeScript type definitions
+├── workers/                # Cloudflare Workers
+│   └── poll-do/           # Poll Durable Object worker
 └── public/                # Static assets
 ```
 
@@ -311,7 +272,8 @@ StreamList supports collaborative groups where members can share watchlists and 
 | Feature | Description |
 |---------|-------------|
 | **Shared Watchlist** | Group members can add/remove items from the group watchlist |
-| **Polls** | Create polls to vote on what to watch next |
+| **Watchlist Intersection** | See what movies/shows everyone in the group wants to watch |
+| **Polls** | Create polls with ranked choices to vote on what to watch |
 | **Invite Links** | Generate unique invite links that expire after 7 days |
 
 ### Group Permissions
@@ -319,6 +281,26 @@ StreamList supports collaborative groups where members can share watchlists and 
 - Only group members can view the group watchlist
 - Only group members can create polls
 - All members can vote on active polls
+- Poll winners are recorded automatically or manually
+
+## Notes
+
+You can add personal notes to any movie or TV show. Notes are stored privately and accessible only to you. Notes are useful for:
+- Recording your thoughts or reviews
+- Tracking where you left off in a series
+- Saving recommendations for later
+
+Notes are managed via the `/api/notes` endpoint (GET to retrieve, POST to save, DELETE to remove).
+
+## Admin Dashboard
+
+Admin users have access to a dashboard at `/admin` that displays:
+- **User Statistics**: Total users, active sessions, users in last 30 days, API key usage
+- **Group Statistics**: Total groups created
+- **Access Code Statistics**: Number of active access codes
+- **Login Activity**: Logins in the last 30 days, unique users, failed attempts, failure rate
+
+Access code management is available at `/admin/access-codes` for creating and managing signup codes.
 
 ## License
 

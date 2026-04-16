@@ -69,7 +69,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { memberId } = await req.json()
+  const { memberId } = await req.json() as { memberId?: number }
   if (!memberId) {
     return NextResponse.json({ error: 'Member ID required' }, { status: 400 })
   }

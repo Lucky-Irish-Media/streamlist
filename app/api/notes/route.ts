@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     }
 
-    let body
+    let body: { tmdbId?: number; mediaType?: string; note?: string }
     try {
       body = await req.json()
     } catch {
@@ -134,7 +134,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     }
 
-    let body
+    let body: { tmdbId?: number; mediaType?: string }
     try {
       body = await req.json()
     } catch {

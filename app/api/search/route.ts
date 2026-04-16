@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
-import { searchMulti, searchMovies, searchTVShows, getImageUrl, getTMDBConfig } from '@/lib/tmdb'
+import { getImageUrl, getTMDBConfig } from '@/lib/tmdb'
+import { cachedSearchMulti, cachedSearchMovies, cachedSearchTVShows } from '@/lib/tmdb-cache'
 
 export const runtime = 'edge'
 
@@ -17,11 +18,11 @@ export async function GET(req: NextRequest) {
 
   let data
   if (type === 'movie') {
-    data = await searchMovies(query, 1, tmdb)
+    data = await cachedSearchMovies(query, 1, tmdb, env as any)
   } else if (type === 'tv') {
-    data = await searchTVShows(query, 1, tmdb)
+    data = await cachedSearchTVShows(query, 1, tmdb, env as any)
   } else {
-    data = await searchMulti(query, 1, tmdb)
+    data = await cachedSearchMulti(query, 1, tmdb, env as any)
   }
 
   let results

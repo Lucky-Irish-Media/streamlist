@@ -21,17 +21,18 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const fetchUsers = () => {
-    fetch('/api/admin/users', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          console.error(data.error)
-          return
-        }
-        setUsers(data.users || [])
-      })
-      .finally(() => setLoading(false))
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users', { credentials: 'include' })
+      const data = await res.json() as { error?: string; users?: User[] }
+      if (data.error) {
+        console.error(data.error)
+        return
+      }
+      setUsers(data.users || [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function AdminUsersPage() {
     
     setActionLoading(userId)
     const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE', credentials: 'include' })
-    const data = await res.json()
+    const data = await res.json() as { success?: boolean; error?: string }
     
     if (data.success) {
       setUsers(users.filter(u => u.id !== userId))
@@ -63,7 +64,7 @@ export default function AdminUsersPage() {
       credentials: 'include',
       body: JSON.stringify({ userId, action: 'regenerateApiKey' })
     })
-    const data = await res.json()
+    const data = await res.json() as { apiKey?: string; error?: string }
     
     if (data.apiKey) {
       alert(`New API key: ${data.apiKey}`)
@@ -82,7 +83,7 @@ export default function AdminUsersPage() {
       credentials: 'include',
       body: JSON.stringify({ userId, action: 'setAdmin', value: !currentIsAdmin })
     })
-    const data = await res.json()
+    const data = await res.json() as { success?: boolean; error?: string }
     
     if (data.success) {
       fetchUsers()

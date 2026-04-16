@@ -75,7 +75,7 @@ export default function PreferencesPage() {
       try {
         const regions = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT', 'JP', 'KR', 'BR', 'IN', 'MX', 'PT', 'ZA']
         const res = await fetch(`/api/providers?regions=${regions.join(',')}`)
-        const data = await res.json()
+        const data = await res.json() as { providers?: { provider_id: number; provider_name: string; logo_path: string }[] }
         if (data.providers) {
           setAllProviders(data.providers)
         }
@@ -100,8 +100,8 @@ export default function PreferencesPage() {
             const type = like.mediaType === 'tv' ? 'tv' : 'movie'
             const res = await fetch(`/api/media?id=${like.tmdbId}&type=${type}`)
             if (!res.ok) return { ...like, posterPath: null }
-            const data = await res.json()
-            return { ...like, posterPath: data.poster_path }
+            const data = await res.json() as { poster_path?: string | null }
+            return { ...like, posterPath: data.poster_path ?? null }
           })
         )
         setLikesWithPosters(results)

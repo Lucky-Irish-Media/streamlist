@@ -129,7 +129,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Not a member of this group' }, { status: 403 })
   }
 
-  const body = await req.json()
+  const body = await req.json() as { closedAt?: string; customCandidates?: unknown[] }
   const { closedAt, customCandidates } = body
 
   let candidates = customCandidates
@@ -245,7 +245,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     candidates = recommendations.slice(0, 5)
   }
 
-  const closeDate = new Date(closedAt)
+  const closeDate = new Date(closedAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
 
   const { nanoid } = await import('nanoid')
 

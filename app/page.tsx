@@ -72,7 +72,7 @@ function HomeContent() {
   useEffect(() => {
     if (user) {
       fetch('/api/recommendations')
-        .then(res => res.json())
+        .then(res => res.json() as Promise<RecommendationsData>)
         .then(data => {
           setData(data)
         })

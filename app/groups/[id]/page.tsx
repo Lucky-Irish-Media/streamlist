@@ -2,14 +2,14 @@
 
 export const runtime = 'edge'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { useUser } from '@/components/UserContext'
 import EmptyState from '@/components/EmptyState'
 import MediaCard from '@/components/MediaCard'
 import { SkeletonGrid } from '@/components/Skeleton'
-import { Lock, User } from 'lucide-react'
+import { Lock, User, Radio } from 'lucide-react'
 
 interface Member {
   id: number
@@ -72,6 +72,8 @@ export default function GroupPage() {
   const [pollDate, setPollDate] = useState('')
   const [userRankings, setUserRankings] = useState<Record<number, number>>({})
   const [voting, setVoting] = useState(false)
+  const [liveUpdates, setLiveUpdates] = useState(false)
+  const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -83,17 +85,79 @@ export default function GroupPage() {
     if (activeTab === 'watchlist' && !groupWatchlist) {
       fetchGroupWatchlist()
     }
-    if (activeTab === 'vote' && !pollData) {
-      fetchPoll()
+    if (activeTab === 'vote') {
+      if (!pollData) {
+        fetchPoll()
+      }
+      if (pollData?.poll?.id) {
+        connectToPollStream()
+      }
     }
-  }, [activeTab])
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+    }
+  }, [activeTab, pollData])
+
+  function connectToPollStream() {
+    if (!pollData?.poll?.id || wsRef.current) return
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/groups/${groupId}/poll/stream`
+
+    try {
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        setLiveUpdates(true)
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data)
+          if (message.type === 'vote_update' && message.results) {
+            setPollData((prev: any) => {
+              if (!prev?.poll?.candidates) return prev
+              const updatedCandidates = prev.poll.candidates.map((c: any) => {
+                const result = message.results.find(
+                  (r: any) => r.tmdbId === c.tmdbId && r.mediaType === c.mediaType
+                )
+                return { ...c, score: result?.score || 0 }
+              })
+              return {
+                ...prev,
+                poll: { ...prev.poll, candidates: updatedCandidates },
+                totalVotes: message.totalVotes,
+              }
+            })
+          } else if (message.type === 'poll_closed') {
+            fetchPoll()
+          }
+        } catch {
+        }
+      }
+
+      ws.onclose = () => {
+        setLiveUpdates(false)
+        wsRef.current = null
+      }
+
+      ws.onerror = () => {
+        ws.close()
+      }
+    } catch {
+    }
+  }
 
   const fetchGroup = async () => {
     const res = await fetch(`/api/groups/${groupId}`, {
       credentials: 'include'
     })
     if (res.ok) {
-      const data = await res.json()
+      const data = await res.json() as GroupData
       setGroupData(data)
     } else {
       router.push('/groups')
@@ -106,17 +170,17 @@ export default function GroupPage() {
     const res = await fetch(`/api/groups/${groupId}/watchlist`, {
       credentials: 'include'
     })
-    const data = await res.json()
+    const data = await res.json() as { intersection: IntersectionItem[]; recommendations: Recommendation[] }
     setGroupWatchlist(data)
 
     if (data.intersection?.length > 0) {
       const results = await Promise.all(
         data.intersection.map(async (item: IntersectionItem) => {
           const res = await fetch(`/api/media?id=${item.tmdbId}&type=${item.mediaType}`)
-          return res.json() as Promise<Recommendation>
+          return res.json() as Promise<Recommendation & { error?: string }>
         })
       )
-      setIntersectionItems(results.filter(r => r && !r.error))
+      setIntersectionItems(results.filter(r => r && !r.error) as Recommendation[])
     }
 
     setRecommendationItems(data.recommendations || [])
@@ -128,14 +192,15 @@ export default function GroupPage() {
     const res = await fetch(`/api/groups/${groupId}/poll`, {
       credentials: 'include'
     })
-    const data = await res.json()
+    const data = await res.json() as { userVote?: Record<number, { tmdbId: number; mediaType: string }>; poll?: { candidates?: any[] }; error?: string }
     setPollData(data)
     if (data.userVote) {
       const ranks: Record<number, number> = {}
       for (let r = 1; r <= 5; r++) {
-        if (data.userVote[r]) {
+        const userVoteEntry = data.userVote[r]
+        if (userVoteEntry) {
           const item = data.poll?.candidates?.find((c: any) => 
-            c.tmdbId === data.userVote[r].tmdbId && c.mediaType === data.userVote[r].mediaType
+            c.tmdbId === userVoteEntry.tmdbId && c.mediaType === userVoteEntry.mediaType
           )
           if (item) {
             ranks[item.tmdbId] = r
@@ -223,7 +288,7 @@ export default function GroupPage() {
       },
       credentials: 'include'
     })
-    const data = await res.json()
+    const data = await res.json() as { inviteLink?: string }
     if (data.inviteLink) {
       setInviteLink(data.inviteLink)
     }
@@ -485,7 +550,22 @@ export default function GroupPage() {
             <>
               <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h2 style={{ marginBottom: '8px' }}>What's Next?</h2>
+                  <h2 style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    What's Next?
+                    {liveUpdates && (
+                      <span style={{
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        color: '#22c55e',
+                        fontWeight: 'normal'
+                      }}>
+                        <Radio size={14} />
+                        Live
+                      </span>
+                    )}
+                  </h2>
                   <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
                     {pollData.totalVotes} vote{pollData.totalVotes !== 1 ? 's' : ''} · Closes {new Date(pollData.poll.closedAt).toLocaleDateString()}
                   </p>

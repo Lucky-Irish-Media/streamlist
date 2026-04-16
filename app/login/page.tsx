@@ -22,7 +22,7 @@ export default function LoginPage() {
       body: JSON.stringify({ username, accessCode }),
     })
 
-    const data = await res.json()
+    const data = await res.json() as { error?: string }
 
     if (data.error) {
       setError(data.error)

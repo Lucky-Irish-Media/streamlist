@@ -43,8 +43,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const res = await fetch('/api/auth/me', { 
       credentials: 'include'
     })
-    const json = await res.json()
-    setUser(json.user)
+    const json = await res.json() as { user?: User }
+    setUser(json.user ?? null)
     if (json.user && !json.user.hasCompletedOnboarding) {
       setShowOnboarding(true)
     }
@@ -87,7 +87,7 @@ function OnboardingModal({ user, onClose }: { user: User; onClose: () => void })
       try {
         const regions = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT', 'JP', 'KR', 'BR', 'IN', 'MX', 'PT', 'ZA']
         const res = await fetch(`/api/providers?regions=${regions.join(',')}`)
-        const data = await res.json()
+        const data = await res.json() as { providers?: { provider_id: number; provider_name: string; logo_path: string }[] }
         if (data.providers) {
           setAllProviders(data.providers)
         }
@@ -158,7 +158,7 @@ function OnboardingModal({ user, onClose }: { user: User; onClose: () => void })
   const searchMedia = async () => {
     if (!searchQuery.trim()) return
     const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
-    const data = await res.json()
+    const data = await res.json() as { results?: any[] }
     setSearchResults(data.results?.slice(0, 10) || [])
   }
 

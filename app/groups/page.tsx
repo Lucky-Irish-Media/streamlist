@@ -32,7 +32,7 @@ export default function GroupsPage() {
     const res = await fetch('/api/groups', {
       credentials: 'include'
     })
-    const data = await res.json()
+    const data = await res.json() as { groups?: Group[] }
     setGroups(data.groups || [])
     setLoading(false)
   }
@@ -48,7 +48,7 @@ export default function GroupsPage() {
       credentials: 'include',
       body: JSON.stringify({ name: newGroupName.trim() })
     })
-    const data = await res.json()
+    const data = await res.json() as { group?: Group }
     if (data.group) {
       setGroups([...groups, { ...data.group, memberCount: 1 }])
       setShowCreateModal(false)

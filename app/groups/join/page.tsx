@@ -39,7 +39,7 @@ export default function JoinGroupPage() {
         body: JSON.stringify({ token })
       })
 
-      const data = await res.json()
+      const data = await res.json() as { error?: string }
 
       if (res.ok) {
         setStatus('success')

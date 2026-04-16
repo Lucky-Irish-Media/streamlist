@@ -115,7 +115,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const body = await req.json()
+    const body = await req.json() as { userId?: string; action?: string; value?: unknown }
     const { userId, action, value } = body
 
     if (!userId) {
@@ -131,7 +131,7 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === 'setAdmin') {
-      await db.update(schema.users).set({ isAdmin: value }).where(eq(schema.users.id, userId)).run()
+      await db.update(schema.users).set({ isAdmin: Boolean(value) }).where(eq(schema.users.id, userId)).run()
       return NextResponse.json({ success: true })
     }
 

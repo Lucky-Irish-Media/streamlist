@@ -24,7 +24,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
   }
 
-  const { streamingServices, genres, likes, addLike, removeLike, countries } = await req.json()
+  const { streamingServices, genres, likes, addLike, removeLike, countries } = await req.json() as {
+    streamingServices?: string[]
+    genres?: number[]
+    likes?: { tmdbId: number; mediaType: string; title?: string }[]
+    addLike?: { tmdbId: number; mediaType: string; title?: string }
+    removeLike?: { tmdbId: number; mediaType: string }
+    countries?: string[]
+  }
   const db = getDB(dbEnv)
 
   if (addLike) {
@@ -33,7 +40,7 @@ export async function POST(req: NextRequest) {
       .all()
     const alreadyExists = existing.some(l => l.tmdbId === addLike.tmdbId)
     if (!alreadyExists) {
-      await db.insert(schema.userLikes).values({ userId, tmdbId: addLike.tmdbId, mediaType: addLike.mediaType, title: addLike.title })
+      await db.insert(schema.userLikes).values({ userId, tmdbId: addLike.tmdbId, mediaType: addLike.mediaType, title: addLike.title || '' })
     }
     return NextResponse.json({ success: true })
   }
@@ -52,8 +59,8 @@ export async function POST(req: NextRequest) {
   if (streamingServices) {
     await db.delete(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, userId)).run()
     for (const service of streamingServices) {
-      const serviceId = typeof service === 'string' ? service : service.id
-      const serviceName = typeof service === 'string' ? service : (service.name || serviceId)
+      const serviceId = typeof service === 'string' ? service : (service as { id: string }).id
+      const serviceName = typeof service === 'string' ? service : (service as { name?: string }).name || serviceId
       await db.insert(schema.userStreamingServices).values({ userId, serviceId, serviceName })
     }
   }
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
   if (likes) {
     await db.delete(schema.userLikes).where(eq(schema.userLikes.userId, userId)).run()
     for (const like of likes) {
-      await db.insert(schema.userLikes).values({ userId, tmdbId: like.tmdbId, mediaType: like.mediaType, title: like.title })
+      await db.insert(schema.userLikes).values({ userId, tmdbId: like.tmdbId, mediaType: like.mediaType, title: like.title || '' })
     }
   }
 

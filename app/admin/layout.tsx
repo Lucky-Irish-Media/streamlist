@@ -11,18 +11,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/auth/me', {
-      credentials: 'include'
-    })
-      .then(res => res.json())
-      .then(data => {
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
+        const data = await res.json() as { user?: { isAdmin: boolean } }
         if (!data.user?.isAdmin) {
           router.push('/')
         } else {
           setLoading(false)
         }
-      })
-      .catch(() => router.push('/'))
+      } catch {
+        router.push('/')
+      }
+    }
+    checkAdmin()
   }, [router])
 
   const navItems = [

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Poll is closed' }, { status: 400 })
   }
 
-  const body = await req.json()
+  const body = await req.json() as { rankings?: Record<string, unknown> }
   const { rankings } = body
 
   if (!rankings || typeof rankings !== 'object') {
@@ -111,12 +111,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     score: scores[`${c.tmdbId}-${c.mediaType}`] || 0,
   })).sort((a: any, b: any) => b.score - a.score)
 
-  return NextResponse.json({
+  const response = {
     success: true,
     rankings,
     results,
     totalVotes: votes.length,
-  })
+  }
+
+  try {
+    const doStub = (env as any).POLL_DO.get(
+      (env as any).POLL_DO.idFromName(`poll-${poll.id}`)
+    )
+    await doStub.fetch(new Request('http://localhost/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'vote',
+        userId,
+        rankings,
+      }),
+    }))
+  } catch {
+  }
+
+  return NextResponse.json(response)
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

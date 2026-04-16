@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
-import { getTrending, getPopularMovies, getPopularTVShows, getNowPlaying, getOnTheAir, getImageUrl, discoverMovies, discoverTVShows, getTMDBConfig } from '@/lib/tmdb'
+import { getImageUrl, getTMDBConfig } from '@/lib/tmdb'
+import {
+  cachedGetTrending,
+  cachedGetPopularMovies,
+  cachedGetPopularTVShows,
+  cachedGetNowPlaying,
+  cachedGetOnTheAir,
+} from '@/lib/tmdb-cache'
 
 export const runtime = 'edge'
 
@@ -28,7 +35,7 @@ export async function GET(req: NextRequest) {
     let totalPages = 1
 
     if (tab === 'trending') {
-      const data = await getTrending('all', page, tmdb)
+      const data = await cachedGetTrending('all', page, tmdb, env as any)
       results = data.results.map((m: any) => ({
         ...m,
         mediaType: m.media_type || 'movie',
@@ -36,7 +43,7 @@ export async function GET(req: NextRequest) {
       }))
       totalPages = data.total_pages
     } else if (tab === 'movies') {
-      const data = await getPopularMovies(page, tmdb)
+      const data = await cachedGetPopularMovies(page, tmdb, env as any)
       results = data.results.map((m: any) => ({
         ...m,
         mediaType: 'movie',
@@ -44,7 +51,7 @@ export async function GET(req: NextRequest) {
       }))
       totalPages = data.total_pages
     } else if (tab === 'tv') {
-      const data = await getPopularTVShows(page, tmdb)
+      const data = await cachedGetPopularTVShows(page, tmdb, env as any)
       results = data.results.map((m: any) => ({
         ...m,
         mediaType: 'tv',
@@ -52,7 +59,7 @@ export async function GET(req: NextRequest) {
       }))
       totalPages = data.total_pages
     } else if (tab === 'new-movies') {
-      const data = await getNowPlaying(page, tmdb)
+      const data = await cachedGetNowPlaying(page, tmdb, env as any)
       results = data.results.map((m: any) => ({
         ...m,
         mediaType: 'movie',
@@ -60,7 +67,7 @@ export async function GET(req: NextRequest) {
       }))
       totalPages = data.total_pages
     } else if (tab === 'new-tv') {
-      const data = await getOnTheAir(page, tmdb)
+      const data = await cachedGetOnTheAir(page, tmdb, env as any)
       results = data.results.map((m: any) => ({
         ...m,
         mediaType: 'tv',

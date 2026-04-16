@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { token } = await req.json()
+  const { token } = await req.json() as { token?: string }
   if (!token) {
     return NextResponse.json({ error: 'Invite token required' }, { status: 400 })
   }

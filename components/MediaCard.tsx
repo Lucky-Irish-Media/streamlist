@@ -71,9 +71,9 @@ export default function MediaCard({ item }: MediaCardProps) {
     fetch('/api/watchlist', {
       credentials: 'include'
     })
-      .then(res => res.json())
+      .then(res => res.json() as Promise<{ watchlist?: { tmdbId: number; mediaType: string }[] }>)
       .then(data => {
-        const exists = data.watchlist?.some((w: any) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
+        const exists = data.watchlist?.some((w) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
         setInWatchlist(!!exists)
       })
       .catch(() => {})
@@ -84,9 +84,9 @@ export default function MediaCard({ item }: MediaCardProps) {
     fetch('/api/auth/me', {
       credentials: 'include'
     })
-      .then(res => res.json())
+      .then(res => res.json() as Promise<{ user?: { likes?: { tmdbId: number; mediaType: string }[] } }>)
       .then(data => {
-        const exists = data.user?.likes?.some((l: any) => l.tmdbId === currentMovieId && l.mediaType === currentMediaType)
+        const exists = data.user?.likes?.some((l) => l.tmdbId === currentMovieId && l.mediaType === currentMediaType)
         setIsLiked(!!exists)
       })
       .catch(() => {})
@@ -97,9 +97,9 @@ export default function MediaCard({ item }: MediaCardProps) {
     fetch('/api/watched', {
       credentials: 'include'
     })
-      .then(res => res.json())
+      .then(res => res.json() as Promise<{ watched?: { tmdbId: number; mediaType: string }[] }>)
       .then(data => {
-        const exists = data.watched?.some((w: any) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
+        const exists = data.watched?.some((w) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
         setIsWatched(!!exists)
       })
       .catch(() => {})
@@ -109,10 +109,10 @@ export default function MediaCard({ item }: MediaCardProps) {
   useEffect(() => {
     const countries = user?.countries?.join(',') || 'US'
     fetch(`/api/media?id=${item.id}&type=${mediaType}&countries=${countries}`)
-      .then(res => res.json())
+      .then(res => res.json() as Promise<MediaItem & { certification?: string | null }>)
       .then(data => {
         if (data.certification) {
-          setDetails(data as any)
+          setDetails(data)
         }
       })
       .catch(() => {})
@@ -125,7 +125,7 @@ export default function MediaCard({ item }: MediaCardProps) {
       const res = await fetch(`/api/notes?tmdbId=${currentMovieId}&mediaType=${currentMediaType}`, {
         credentials: 'include'
       })
-      const data = await res.json()
+      const data = await res.json() as { note?: { note: string } }
       if (data.note) {
         setNote(data.note.note)
         setHasNote(true)
@@ -151,7 +151,7 @@ export default function MediaCard({ item }: MediaCardProps) {
         credentials: 'include',
         body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType, note }),
       })
-      const data = await res.json()
+      const data = await res.json() as { success?: boolean }
       if (data.success) {
         setHasNote(note.length > 0)
       }
@@ -172,7 +172,7 @@ export default function MediaCard({ item }: MediaCardProps) {
         credentials: 'include',
         body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
       })
-      const data = await res.json()
+      const data = await res.json() as { success?: boolean }
       if (data.success) {
         setNote('')
         setHasNote(false)
@@ -193,7 +193,7 @@ export default function MediaCard({ item }: MediaCardProps) {
     try {
       const countries = user?.countries?.join(',') || 'US'
       const res = await fetch(`/api/media?id=${targetId}&type=${targetMediaType}&countries=${countries}`)
-      const data = await res.json()
+      const data = await res.json() as MediaItem
       setDetails(data)
     } catch (err) {
       console.error('Failed to fetch details:', err)
@@ -252,7 +252,7 @@ export default function MediaCard({ item }: MediaCardProps) {
         credentials: 'include',
           body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
       })
-      const data = await res.json()
+      const data = await res.json() as { error?: string }
       if (data.error) {
         alert('Error: ' + data.error)
       } else {
@@ -283,7 +283,7 @@ export default function MediaCard({ item }: MediaCardProps) {
         credentials: 'include',
         body: JSON.stringify(body),
       })
-      const data = await res.json()
+      const data = await res.json() as { error?: string }
       if (data.error) {
         alert('Error: ' + data.error)
       } else {
@@ -321,7 +321,7 @@ export default function MediaCard({ item }: MediaCardProps) {
           credentials: 'include',
           body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType, title: currentTitle }),
         })
-        const data = await res.json()
+        const data = await res.json() as { error?: string }
         if (data.error) {
           alert('Error: ' + data.error)
         } else {

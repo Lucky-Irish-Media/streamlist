@@ -1,0 +1,34 @@
+name = "poll-worker"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+compatibility_flags = ["nodejs_compat_v2"]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PollDurableObject"]
+
+[[durable_objects.bindings]]
+name = "POLL_DO"
+class_name = "PollDurableObject"
+
+[[kv_namespaces]]
+binding = "POLL_KV"
+id = "b9ca3c6cb9574ec3b2f0b17d39f3dc81"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "streamlist-preview-db"
+database_id = "983ba98d-4c10-4eca-bbc4-787f9cb8ffca"
+
+[env.production]
+name = "poll-worker"
+  [[env.production.durable_objects.bindings]]
+  name = "POLL_DO"
+  class_name = "PollDurableObject"
+  [[env.production.kv_namespaces]]
+  binding = "POLL_KV"
+  id = "f002fdbeac3b4fc4b12a7cb5ffa94b47"
+  [[env.production.d1_databases]]
+  binding = "DB"
+  database_name = "streamlist-db"
+  database_id = "541b5cbd-1898-4994-8abd-557b5a57abf5"

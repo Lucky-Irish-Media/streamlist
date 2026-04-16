@@ -20,17 +20,18 @@ export default function AdminAccessCodesPage() {
   const [newCode, setNewCode] = useState('')
   const [expiresDays, setExpiresDays] = useState('')
 
-  const fetchCodes = () => {
-    fetch('/api/admin/access-codes', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          console.error(data.error)
-          return
-        }
-        setCodes(data.codes || [])
-      })
-      .finally(() => setLoading(false))
+  const fetchCodes = async () => {
+    try {
+      const res = await fetch('/api/admin/access-codes', { credentials: 'include' })
+      const data = await res.json() as { error?: string; codes?: AccessCode[] }
+      if (data.error) {
+        console.error(data.error)
+        return
+      }
+      setCodes(data.codes || [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function AdminAccessCodesPage() {
         expiresInDays
       })
     })
-    const data = await res.json()
+    const data = await res.json() as { id?: string; code?: string; error?: string }
     
     if (data.id) {
       alert(`Access code created: ${data.code}`)
@@ -70,7 +71,7 @@ export default function AdminAccessCodesPage() {
       credentials: 'include',
       body: JSON.stringify({ id: codeId, action: 'toggleActive' })
     })
-    const data = await res.json()
+    const data = await res.json() as { success?: boolean; error?: string }
     
     if (data.success) {
       fetchCodes()
@@ -85,7 +86,7 @@ export default function AdminAccessCodesPage() {
     
     setActionLoading(codeId)
     const res = await fetch(`/api/admin/access-codes?id=${codeId}`, { method: 'DELETE', credentials: 'include' })
-    const data = await res.json()
+    const data = await res.json() as { success?: boolean; error?: string }
     
     if (data.success) {
       setCodes(codes.filter(c => c.id !== codeId))

@@ -4,8 +4,7 @@ import { getSessionUser, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import {
-  getTrending, getPopularMovies, getPopularTVShows,
-  getNowPlaying, getOnTheAir, getImageUrl, fetchFromTMDB,
+  getImageUrl, fetchFromTMDB,
   getMovieRecommendations, getTVRecommendations,
   getMovieSimilar, getTVSimilar,
   getMovieKeywords, getTVKeywords,
@@ -14,6 +13,15 @@ import {
   getTMDBConfig,
   type TMDBConfig, type MediaItem, type TMDBResponse,
 } from '@/lib/tmdb'
+import {
+  cachedGetTrending,
+  cachedGetPopularMovies,
+  cachedGetPopularTVShows,
+  cachedGetNowPlaying,
+  cachedGetOnTheAir,
+  cachedDiscoverMovies,
+  cachedDiscoverTVShows,
+} from '@/lib/tmdb-cache'
 
 export const runtime = 'edge'
 
@@ -324,11 +332,11 @@ export async function GET(req: NextRequest) {
 
   // Fetch catalog data in parallel
   const [trending, popularMovies, popularTV, nowPlaying, onTheAir] = await Promise.all([
-    getTrending('all', 1, tmdb),
-    getPopularMovies(1, tmdb),
-    getPopularTVShows(1, tmdb),
-    getNowPlaying(1, tmdb),
-    getOnTheAir(1, tmdb),
+    cachedGetTrending('all', 1, tmdb, env as any),
+    cachedGetPopularMovies(1, tmdb, env as any),
+    cachedGetPopularTVShows(1, tmdb, env as any),
+    cachedGetNowPlaying(1, tmdb, env as any),
+    cachedGetOnTheAir(1, tmdb, env as any),
   ])
 
   // Build hybrid recommendations
@@ -362,8 +370,8 @@ export async function GET(req: NextRequest) {
     }
 
     const [movies, tv] = await Promise.all([
-      discoverMovies(discoverParams, tmdb),
-      discoverTVShows(discoverParams, tmdb),
+      cachedDiscoverMovies(discoverParams, tmdb, env as any),
+      cachedDiscoverTVShows(discoverParams, tmdb, env as any),
     ])
 
     const allItems = [...movies.results, ...tv.results]

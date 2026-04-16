@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json()
+    const body = await req.json() as { code?: string; expiresInDays?: number }
     const { code, expiresInDays } = body
 
     const newCode = code || nanoid(12)
@@ -103,7 +103,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const body = await req.json()
+    const body = await req.json() as { id?: string; action?: string; value?: unknown }
     const { id, action, value } = body
 
     if (!id) {

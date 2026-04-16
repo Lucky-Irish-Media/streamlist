@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   try {
 
-    let body
+    let body: { username?: string; accessCode?: string }
     try {
       body = await req.json()
       username = body.username?.toLowerCase()

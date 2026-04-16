@@ -559,13 +559,24 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
     }
     case 'create_group': {
       const { name } = args as { name: string }
-      const { nanoid } = await import('nanoid')
 
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return { error: 'Group name is required' }
+      }
+
+      const trimmedName = name.trim()
+      if (trimmedName.length > 50) {
+        return { error: 'Group name must be 50 characters or less' }
+      }
+
+      const sanitizedName = trimmedName.replace(/<[^>]*>/g, '')
+
+      const { nanoid } = await import('nanoid')
       const groupId = nanoid(16)
 
       await db.insert(schema.userGroups).values({
         id: groupId,
-        name,
+        name: sanitizedName,
         createdBy: userId,
       }).run()
 

@@ -26,27 +26,33 @@ export default function AdminDashboard() {
   const router = useRouter()
 
   useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        if (!data.user?.isAdmin) {
+    const loadStats = async () => {
+      try {
+        const meRes = await fetch('/api/auth/me', { credentials: 'include' })
+        const meData = await meRes.json() as { user?: { isAdmin: boolean } }
+        if (!meData.user?.isAdmin) {
           router.push('/')
           return
         }
 
-        Promise.all([
-          fetch('/api/admin/stats', { credentials: 'include' }).then(r => r.json()),
-          fetch('/api/admin/activity?type=stats', { credentials: 'include' }).then(r => r.json()),
+        const [statsRes, activityRes] = await Promise.all([
+          fetch('/api/admin/stats', { credentials: 'include' }),
+          fetch('/api/admin/activity?type=stats', { credentials: 'include' }),
         ])
-          .then(([statsData, activityData]) => {
-            if (statsData.error) console.error(statsData.error)
-            else setStats(statsData)
-            if (activityData.error) console.error(activityData.error)
-            else setLoginStats(activityData)
-          })
-          .finally(() => setLoading(false))
-      })
-      .catch(() => router.push('/'))
+        const statsData = await statsRes.json() as Stats & { error?: string }
+        const activityData = await activityRes.json() as LoginStats & { error?: string }
+
+        if (statsData.error) console.error(statsData.error)
+        else setStats(statsData)
+        if (activityData.error) console.error(activityData.error)
+        else setLoginStats(activityData)
+      } catch {
+        router.push('/')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadStats()
   }, [router])
 
   const statCards = [

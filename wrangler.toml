@@ -6,20 +6,44 @@ pages_build_output_dir = ".vercel/output/static"
 [observability]
 enabled = true
 
+[[kv_namespaces]]
+binding = "TMDB_CACHE"
+id = "40240ea574ad4cf1b92203d51eff979f"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "streamlist-db"
+database_id = "541b5cbd-1898-4994-8abd-557b5a57abf5"
+
+[[durable_objects.bindings]]
+name = "POLL_DO"
+class_name = "PollDurableObject"
+script_name = "poll-worker"
+
+[[kv_namespaces]]
+binding = "POLL_KV"
+id = "f002fdbeac3b4fc4b12a7cb5ffa94b47"
+
 [env.production]
 name = "streamlist"
   [env.production.vars]
   TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
-  [[env.production.d1_databases]]
-  binding = "DB"
-  database_name = "streamlist-db"
-  database_id = "541b5cbd-1898-4994-8abd-557b5a57abf5"
 
 [env.preview]
 name = "streamlist-preview"
   [env.preview.vars]
   TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
+  [[env.preview.kv_namespaces]]
+  binding = "TMDB_CACHE"
+  id = "168c57e542a8459ab335e493b8c43b65"
   [[env.preview.d1_databases]]
   binding = "DB"
   database_name = "streamlist-preview-db"
   database_id = "983ba98d-4c10-4eca-bbc4-787f9cb8ffca"
+  [[env.preview.durable_objects.bindings]]
+  name = "POLL_DO"
+  class_name = "PollDurableObject"
+  script_name = "poll-worker"
+  [[env.preview.kv_namespaces]]
+  binding = "POLL_KV"
+  id = "b9ca3c6cb9574ec3b2f0b17d39f3dc81"

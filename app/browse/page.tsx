@@ -73,7 +73,7 @@ function BrowsePageContent() {
     }
 
     const res = await fetch(`/api/browse?tab=${tab}&page=${pageNum}`)
-    const data = await res.json()
+    const data = await res.json() as { results?: MediaItem[]; hasMore?: boolean }
 
     if (!res.ok || !data.results) {
       setLoading(false)
@@ -82,11 +82,11 @@ function BrowsePageContent() {
     }
 
     if (isLoadMore) {
-      setItems(prev => [...prev, ...data.results])
+      setItems(prev => [...prev, ...data.results!])
     } else {
-      setItems(data.results)
+      setItems(data.results!)
     }
-    setHasMore(data.hasMore)
+    setHasMore(data.hasMore ?? false)
     setPage(pageNum)
     setLoading(false)
     setLoadingMore(false)
@@ -109,7 +109,7 @@ function BrowsePageContent() {
     setShowHistory(false)
     const typeParam = currentSearchType ? `&type=${currentSearchType}` : ''
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}${typeParam}`)
-    const data = await res.json()
+    const data = await res.json() as { results?: MediaItem[] }
     setSearchResults(data.results || [])
   }, [])
 
@@ -169,7 +169,7 @@ function BrowsePageContent() {
     setShowHistory(false)
     const typeParam = searchType ? `&type=${searchType}` : ''
     const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}${typeParam}`)
-    const data = await res.json()
+    const data = await res.json() as { results?: MediaItem[] }
     setSearchResults(data.results || [])
   }
 
@@ -225,7 +225,7 @@ function BrowsePageContent() {
                     setSearchHistory(getSearchHistory())
                     const typeParam = currentSearchType ? `&type=${currentSearchType}` : ''
                     const res = await fetch(`/api/search?q=${encodeURIComponent(item)}${typeParam}`)
-                    const data = await res.json()
+                    const data = await res.json() as { results?: MediaItem[] }
                     setSearchResults(data.results || [])
                   }}
                 >

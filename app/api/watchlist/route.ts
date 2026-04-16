@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     }
 
-    let body
+    let body: { tmdbId?: number; mediaType?: string }
     try {
       body = await req.json()
     } catch {
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     const { tmdbId, mediaType } = body
 
-    logger.info('Watchlist POST request', { body: JSON.stringify(body), tmdbId, tmdbType: typeof tmdbId, mediaType, mediaTypeType: typeof mediaType, keys: Object.keys(body) })
+    logger.info('Watchlist POST request', { body: JSON.stringify(body), tmdbId, tmdbType: typeof tmdbId, mediaType, mediaTypeType: typeof mediaType })
 
     if (!tmdbId) {
       return NextResponse.json({ error: 'Missing tmdbId' }, { status: 400 })

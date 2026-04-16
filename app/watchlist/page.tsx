@@ -25,10 +25,10 @@ export default function WatchlistPage() {
     Promise.all([
       fetch('/api/watchlist', { 
         credentials: 'include'
-      }).then(res => res.json()),
+      }).then(res => res.json() as Promise<{ watchlist?: WatchlistItem[] }>),
       fetch('/api/watched', { 
         credentials: 'include'
-      }).then(res => res.json())
+      }).then(res => res.json() as Promise<{ watched?: WatchlistItem[] }>)
     ]).then(([watchlistData, watchedData]) => {
       const list = watchlistData.watchlist || []
       const watchedList = watchedData.watched || []
