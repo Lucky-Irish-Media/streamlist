@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
-import { deleteSession, endSession } from '@/lib/auth'
+import { deleteSession, endSession, getUserFromSession } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
+import { writeLogoutEvent } from '@/lib/analytics'
 
 export const runtime = 'edge'
 
@@ -14,8 +15,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (sessionId) {
+    const user = await getUserFromSession(dbEnv, sessionId)
     await endSession(dbEnv, sessionId)
     await deleteSession(dbEnv, sessionId)
+    if (user) {
+      writeLogoutEvent(env, user.id)
+    }
   }
 
   const response = NextResponse.json({ success: true })

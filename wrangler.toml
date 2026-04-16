@@ -24,15 +24,38 @@ script_name = "poll-worker"
 binding = "POLL_KV"
 id = "f002fdbeac3b4fc4b12a7cb5ffa94b47"
 
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "streamlist_events"
+
 [env.production]
-name = "streamlist"
+  name = "streamlist"
   [env.production.vars]
   TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
+  ANALYTICS_DATASET = "streamlist_events"
+  [[env.production.kv_namespaces]]
+  binding = "TMDB_CACHE"
+  id = "40240ea574ad4cf1b92203d51eff979f"
+  [[env.production.d1_databases]]
+  binding = "DB"
+  database_name = "streamlist-db"
+  database_id = "541b5cbd-1898-4994-8abd-557b5a57abf5"
+  [[env.production.durable_objects.bindings]]
+  name = "POLL_DO"
+  class_name = "PollDurableObject"
+  script_name = "poll-worker"
+  [[env.production.kv_namespaces]]
+  binding = "POLL_KV"
+  id = "f002fdbeac3b4fc4b12a7cb5ffa94b47"
+  [[env.production.analytics_engine_datasets]]
+  binding = "ANALYTICS"
+  dataset = "streamlist_events"
 
 [env.preview]
-name = "streamlist-preview"
+  name = "streamlist-preview"
   [env.preview.vars]
   TMDB_API_BASE_URL = "https://api.themoviedb.org/3"
+  ANALYTICS_DATASET = "streamlist_preview_events"
   [[env.preview.kv_namespaces]]
   binding = "TMDB_CACHE"
   id = "168c57e542a8459ab335e493b8c43b65"
@@ -44,6 +67,10 @@ name = "streamlist-preview"
   name = "POLL_DO"
   class_name = "PollDurableObject"
   script_name = "poll-worker"
-  [[env.preview.kv_namespaces]]
-  binding = "POLL_KV"
-  id = "b9ca3c6cb9574ec3b2f0b17d39f3dc81"
+[[env.preview.kv_namespaces]]
+binding = "POLL_KV"
+id = "b9ca3c6cb9574ec3b2f0b17d39f3dc81"
+
+[[env.preview.analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "streamlist_preview_events"
