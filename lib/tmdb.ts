@@ -205,6 +205,11 @@ export async function getTVSeriesVideos(tvId: number, tmdbConfig?: TMDBConfig): 
   return fetchFromTMDB(`/tv/${tvId}/videos`, {}, tmdbConfig)
 }
 
+export async function getTVSeasons(tvId: number, tmdbConfig?: TMDBConfig): Promise<{ id: number; name: string; season_number: number; aired_date: string | null }[]> {
+  const details = await fetchFromTMDB<{ seasons?: { id: number; name: string; season_number: number; aired_date: string | null }[] }>(`/tv/${tvId}`, {}, tmdbConfig)
+  return details?.seasons?.filter((s) => s.season_number > 0) || []
+}
+
 export interface CollectionPart {
   id: number
   title: string

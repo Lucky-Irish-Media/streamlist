@@ -52,14 +52,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
     }
 
-    let body: { tmdbId?: number; mediaType?: string; title?: string }
+    let body: { tmdbId?: number; mediaType?: string; title?: string; season?: number }
     try {
       body = await req.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
     }
 
-    const { tmdbId, mediaType, title } = body
+    const { tmdbId, mediaType, title, season } = body
 
     if (!tmdbId) {
       return NextResponse.json({ error: 'tmdbId is required' }, { status: 400 })
@@ -92,11 +92,13 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    const seasonWatched = finalMediaType === 'tv' && season ? season : null
     await db.insert(schema.watched).values({
       userId,
       tmdbId,
       mediaType: finalMediaType,
       title: title || '',
+      seasonWatched,
     })
 
     return NextResponse.json({ added: true })

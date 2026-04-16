@@ -51,6 +51,10 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [loadingLiked, setLoadingLiked] = useState(true)
   const [isWatched, setIsWatched] = useState(false)
   const [loadingWatched, setLoadingWatched] = useState(true)
+  const [seasonWatched, setSeasonWatched] = useState<number | null>(null)
+  const [selectingSeason, setSelectingSeason] = useState(false)
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null)
+  const [seasons, setSeasons] = useState<{ season_number: number; name: string }[]>([])
   const [imageError, setImageError] = useState(false)
   const [modalImageError, setModalImageError] = useState(false)
   const [showTrailer, setShowTrailer] = useState(false)
@@ -97,10 +101,11 @@ export default function MediaCard({ item }: MediaCardProps) {
     fetch('/api/watched', {
       credentials: 'include'
     })
-      .then(res => res.json() as Promise<{ watched?: { tmdbId: number; mediaType: string }[] }>)
+      .then(res => res.json() as Promise<{ watched?: { tmdbId: number; mediaType: string; seasonWatched: number | null }[] }>)
       .then(data => {
-        const exists = data.watched?.some((w) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
-        setIsWatched(!!exists)
+        const watchedItem = data.watched?.find((w) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
+        setIsWatched(!!watchedItem)
+        setSeasonWatched(watchedItem?.seasonWatched ?? null)
       })
       .catch(() => {})
       .finally(() => setLoadingWatched(false))
@@ -109,10 +114,13 @@ export default function MediaCard({ item }: MediaCardProps) {
   useEffect(() => {
     const countries = user?.countries?.join(',') || 'US'
     fetch(`/api/media?id=${item.id}&type=${mediaType}&countries=${countries}`)
-      .then(res => res.json() as Promise<MediaItem & { certification?: string | null }>)
+      .then(res => res.json() as Promise<MediaItem & { certification?: string | null; seasons?: { season_number: number; name: string }[] }>)
       .then(data => {
         if (data.certification) {
           setDetails(data)
+        }
+        if (data.seasons) {
+          setSeasons(data.seasons)
         }
       })
       .catch(() => {})
@@ -295,7 +303,7 @@ export default function MediaCard({ item }: MediaCardProps) {
     }
   }
 
-  const toggleWatched = async (e: React.MouseEvent) => {
+const toggleWatched = async (e: React.MouseEvent, season?: number) => {
     e.stopPropagation()
     if (!user) {
       alert('Please log in')
@@ -309,23 +317,26 @@ export default function MediaCard({ item }: MediaCardProps) {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
         })
         setIsWatched(false)
+        setSeasonWatched(null)
       } else {
+        const seasonToSave = (currentMediaType === 'tv' && season) ? season : undefined
         const res = await fetch('/api/watched', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType, title: currentTitle }),
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType, title: currentTitle, season: seasonToSave }),
         })
         const data = await res.json() as { error?: string }
         if (data.error) {
           alert('Error: ' + data.error)
         } else {
           setIsWatched(true)
+          setSeasonWatched(seasonToSave ?? null)
           setInWatchlist(true)
         }
       }
@@ -359,6 +370,7 @@ export default function MediaCard({ item }: MediaCardProps) {
           <div className="card-title">{title}</div>
           <div className="card-meta">
             <span className="badge">{mediaType}</span>
+            {isWatched && seasonWatched && <span className="badge watched-badge">S{seasonWatched}</span>}
             <span className="rating"><Star size={12} fill="currentColor" /> {item.vote_average?.toFixed(1)}</span>
             <span className="certification">{certification || 'NA'}</span>
           </div>
@@ -415,11 +427,38 @@ export default function MediaCard({ item }: MediaCardProps) {
               <div className="modal-action-icons">
                 <button 
                   className="icon-btn" 
-                  onClick={toggleWatched} 
+                  onClick={(e) => {
+                    if (currentMediaType === 'tv' && !isWatched) {
+                      setSelectingSeason(true)
+                    } else {
+                      toggleWatched(e)
+                    }
+                  }} 
                   title={isWatched ? 'Mark unwatched' : 'Mark as watched'}
                 >
                   {isWatched ? <Check size={18} /> : <Eye size={18} />}
                 </button>
+                {selectingSeason && currentMediaType === 'tv' && (
+                  <select
+                    className="season-dropdown"
+                    onChange={(e) => {
+                      const season = parseInt(e.target.value)
+                      if (season) {
+                        toggleWatched({ stopPropagation: () => {} } as any, season)
+                        setSelectingSeason(false)
+                      }
+                    }}
+                    onBlur={() => setSelectingSeason(false)}
+                    autoFocus
+                  >
+                    <option value="">Select season...</option>
+                    {seasons.map((s) => (
+                      <option key={s.season_number} value={s.season_number}>
+                        {s.name || `Season ${s.season_number}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button 
                   className="icon-btn" 
                   onClick={toggleLike} 

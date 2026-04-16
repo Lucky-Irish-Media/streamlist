@@ -44,6 +44,7 @@ export const watched = sqliteTable('watched', {
   tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
   mediaType: text('media_type').notNull(),
   title: text('title').notNull(),
+  seasonWatched: integer('season_watched'),
   watchedAt: integer('watched_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 

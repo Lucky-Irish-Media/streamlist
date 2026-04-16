@@ -640,6 +640,11 @@ input:focus, textarea:focus {
   margin-right: 8px;
 }
 
+.watched-badge {
+  background-color: var(--success);
+  color: white;
+}
+
 .rating {
   color: #ffd700;
   font-weight: 600;

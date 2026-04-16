@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
-import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos, getCollectionDetails, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos, getCollectionDetails, getTVSeasons, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
@@ -61,11 +61,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid media type' }, { status: 400 })
     }
 
-    const [item, providers, certification, videos] = await Promise.all([
+    const [item, providers, certification, videos, seasons] = await Promise.all([
       detailsPromise,
       providersPromise,
       getCertification(mediaType, id, countries[0], tmdb),
-      videosPromise
+      videosPromise,
+      mediaType === 'tv' ? getTVSeasons(id, tmdb) : Promise.resolve(null)
     ])
 
     let collection = null
@@ -136,6 +137,7 @@ export async function GET(req: NextRequest) {
         flatrate,
       },
       collection,
+      seasons,
       _debug: debug,
     })
   } catch (error) {

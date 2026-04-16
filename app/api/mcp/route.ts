@@ -304,10 +304,16 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
         .from(schema.watched)
         .where(eq(schema.watched.userId, userId))
         .all()
-      return items
+      return items.map(item => ({
+        tmdbId: item.tmdbId,
+        mediaType: item.mediaType,
+        title: item.title,
+        seasonWatched: item.seasonWatched,
+        watchedAt: item.watchedAt,
+      }))
     }
     case 'mark_as_watched': {
-      const { tmdb_id, media_type, title } = args as { tmdb_id: number; media_type: string; title: string }
+      const { tmdb_id, media_type, title, season } = args as { tmdb_id: number; media_type: string; title: string; season?: number }
       const existing = await db
         .select()
         .from(schema.watched)
@@ -321,11 +327,13 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
       if (existing) {
         return { success: false, message: 'Already in watch history' }
       }
+      const seasonWatched = media_type === 'tv' && season ? season : null
       await db.insert(schema.watched).values({
         userId,
         tmdbId: tmdb_id,
         mediaType: media_type,
         title,
+        seasonWatched,
       }).run()
       return { success: true, message: 'Marked as watched' }
     }
@@ -1268,8 +1276,8 @@ export async function GET(req: NextRequest) {
     { name: 'update_country', description: 'Update the user\'s country preferences', inputSchema: { type: 'object', properties: { countries: { type: 'array', items: { type: 'string' } } }, required: ['countries'] } },
     { name: 'add_like', description: 'Add a movie or TV show to user\'s liked list', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, title: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'title'] } },
     { name: 'remove_like', description: 'Remove a movie or TV show from user\'s liked list', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
-    { name: 'get_watch_history', description: 'Get user\'s watch history (movies/shows marked as watched)', inputSchema: { type: 'object', properties: {} } },
-    { name: 'mark_as_watched', description: 'Mark a movie or TV show as watched', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, title: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'title'] } },
+    { name: 'get_watch_history', description: 'Get user\'s watch history (movies/shows marked as watched) with optional season watched for TV shows', inputSchema: { type: 'object', properties: {} } },
+    { name: 'mark_as_watched', description: 'Mark a movie or TV show as watched, optionally specify season for TV shows', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, title: { type: 'string' }, season: { type: 'number', description: 'Season watched (for TV shows only)' } }, required: ['tmdb_id', 'media_type', 'title'] } },
     { name: 'remove_from_watch_history', description: 'Remove a movie or TV show from watch history', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' } }, required: ['tmdb_id'] } },
     { name: 'search_media', description: 'Search for movies or TV shows by query', inputSchema: { type: 'object', properties: { query: { type: 'string' }, page: { type: 'number' } }, required: ['query'] } },
     { name: 'get_media_details', description: 'Get detailed information about a specific movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
