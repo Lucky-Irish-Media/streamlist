@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUser } from '@/components/UserContext'
-import { Check, Eye, Heart, Trash2, Plus, FileText, Star, ArrowLeft, X, Play } from 'lucide-react'
+import { Check, Eye, Heart, Trash2, Plus, FileText, Star, ArrowLeft, X, Play, ChevronDown, MoreHorizontal } from 'lucide-react'
 
 interface MediaItem {
   id: number
@@ -52,9 +52,12 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [isWatched, setIsWatched] = useState(false)
   const [loadingWatched, setLoadingWatched] = useState(true)
   const [seasonWatched, setSeasonWatched] = useState<number | null>(null)
-  const [selectingSeason, setSelectingSeason] = useState(false)
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null)
-  const [seasons, setSeasons] = useState<{ season_number: number; name: string }[]>([])
+  const [seasons, setSeasons] = useState<{ season_number: number; name: string; aired_date?: string }[]>([])
+  const [expandedSeason, setExpandedSeason] = useState<number | null>(null)
+  const [seasonEpisodes, setSeasonEpisodes] = useState<Record<number, { id: number; name: string; episode_number: number; overview: string | null; still_path: string | null }[]>>({})
+  const [loadingEpisodes, setLoadingEpisodes] = useState<number | null>(null)
+  const [watchedEpisodes, setWatchedEpisodes] = useState<Record<string, boolean>>({})
   const [imageError, setImageError] = useState(false)
   const [modalImageError, setModalImageError] = useState(false)
   const [showTrailer, setShowTrailer] = useState(false)
@@ -65,6 +68,20 @@ export default function MediaCard({ item }: MediaCardProps) {
   const [hasNote, setHasNote] = useState(false)
   const [loadingNote, setLoadingNote] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false)
+  const actionsDropdownRef = useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target as Node)) {
+        setShowActionsDropdown(false)
+      }
+    }
+    if (showActionsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showActionsDropdown])
   
   const mediaType = item.media_type || item.mediaType || 'movie'
   const isNavigated = collectionHistory.length > 0
@@ -98,14 +115,19 @@ export default function MediaCard({ item }: MediaCardProps) {
   }, [currentMovieId, currentMediaType])
 
   useEffect(() => {
-    fetch('/api/watched', {
+    fetch(`/api/watched?tmdbId=${currentMovieId}&type=${currentMediaType}`, {
       credentials: 'include'
     })
-      .then(res => res.json() as Promise<{ watched?: { tmdbId: number; mediaType: string; seasonWatched: number | null }[] }>)
+      .then(res => res.json() as Promise<{ watched?: { tmdbId: number; mediaType: string; seasonWatched: number | null }[]; episodes?: { seasonNumber: number; episodeNumber: number }[] }>)
       .then(data => {
         const watchedItem = data.watched?.find((w) => w.tmdbId === currentMovieId && w.mediaType === currentMediaType)
         setIsWatched(!!watchedItem)
         setSeasonWatched(watchedItem?.seasonWatched ?? null)
+        const episodeMap: Record<string, boolean> = {}
+        data.episodes?.forEach((ep) => {
+          episodeMap[`${ep.seasonNumber}-${ep.episodeNumber}`] = true
+        })
+        setWatchedEpisodes(episodeMap)
       })
       .catch(() => {})
       .finally(() => setLoadingWatched(false))
@@ -121,6 +143,11 @@ export default function MediaCard({ item }: MediaCardProps) {
         }
         if (data.seasons) {
           setSeasons(data.seasons)
+          if (mediaType === 'tv') {
+            data.seasons.forEach((season) => {
+              fetchSeasonEpisodes(season.season_number)
+            })
+          }
         }
       })
       .catch(() => {})
@@ -217,6 +244,7 @@ export default function MediaCard({ item }: MediaCardProps) {
   const closeModal = () => {
     setShowModal(false)
     setShowTrailer(false)
+    setShowActionsDropdown(false)
     setDetails(null)
     setCurrentMovieId(item.id)
     setCurrentMediaType(item.media_type || item.mediaType || 'movie')
@@ -345,6 +373,98 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
     }
   }
 
+  const fetchSeasonEpisodes = async (seasonNumber: number) => {
+    if (seasonEpisodes[seasonNumber]) return
+    setLoadingEpisodes(seasonNumber)
+    try {
+      const res = await fetch(`/api/media?id=${currentMovieId}&type=tv&season=${seasonNumber}`)
+      const data = await res.json() as { episodes?: { id: number; name: string; episode_number: number; overview: string | null; still_path: string | null }[] }
+      if (data.episodes) {
+        setSeasonEpisodes((prev) => ({ ...prev, [seasonNumber]: data.episodes || [] }))
+      }
+    } catch (err) {
+      console.error('Failed to fetch episodes:', err)
+    } finally {
+      setLoadingEpisodes(null)
+    }
+  }
+
+  const toggleEpisodeWatched = async (seasonNumber: number, episodeNumber: number) => {
+    if (!user) {
+      alert('Please log in')
+      return
+    }
+    const key = `${seasonNumber}-${episodeNumber}`
+    const isWatched = watchedEpisodes[key]
+    try {
+      if (isWatched) {
+        await fetch('/api/watched', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: currentMovieId, episodes: [{ seasonNumber, episodeNumber }] }),
+        })
+        setWatchedEpisodes((prev) => ({ ...prev, [key]: false }))
+      } else {
+        await fetch('/api/watched', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: 'tv', episodes: [{ seasonNumber, episodeNumber }] }),
+        })
+        setWatchedEpisodes((prev) => ({ ...prev, [key]: true }))
+      }
+    } catch (err) {
+      console.error('Failed to toggle episode:', err)
+    }
+  }
+
+  const markSeasonWatched = async (seasonNumber: number) => {
+    if (!user) {
+      alert('Please log in')
+      return
+    }
+    const episodes = seasonEpisodes[seasonNumber]
+    if (!episodes) return
+    try {
+      const episodesToMark = episodes.map((ep) => ({ seasonNumber, episodeNumber: ep.episode_number }))
+      await fetch('/api/watched', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: 'tv', episodes: episodesToMark }),
+      })
+      const newWatched = { ...watchedEpisodes }
+      episodes.forEach((ep) => { newWatched[`${seasonNumber}-${ep.episode_number}`] = true })
+      setWatchedEpisodes(newWatched)
+    } catch (err) {
+      console.error('Failed to mark season watched:', err)
+    }
+  }
+
+  const markSeasonUnwatched = async (seasonNumber: number) => {
+    if (!user) {
+      alert('Please log in')
+      return
+    }
+    const episodes = seasonEpisodes[seasonNumber]
+    if (!episodes) return
+    try {
+      const episodesToUnmark = episodes.map((ep) => ({ seasonNumber, episodeNumber: ep.episode_number }))
+      await fetch('/api/watched', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tmdbId: currentMovieId, episodes: episodesToUnmark }),
+      })
+      const newWatched = { ...watchedEpisodes }
+      episodes.forEach((ep) => { delete newWatched[`${seasonNumber}-${ep.episode_number}`] })
+      setWatchedEpisodes(newWatched)
+    } catch (err) {
+      console.error('Failed to mark season unwatched:', err)
+    }
+  }
+
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation()
     openModal()
@@ -360,12 +480,19 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
   return (
     <>
       <div className="card">
-        <img 
-          src={imageSrc} 
-          alt={title} 
-          className="card-image"
-          onError={() => setImageError(true)}
-        />
+        <div className="card-image-wrapper">
+          <img 
+            src={imageSrc} 
+            alt={title} 
+            className="card-image"
+            onError={() => setImageError(true)}
+          />
+          {isWatched && (
+            <div className="watched-overlay" title="Watched">
+              <Check size={20} />
+            </div>
+          )}
+        </div>
         <div className="card-content">
           <div className="card-title">{title}</div>
           <div className="card-meta">
@@ -425,54 +552,6 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                 </button>
               )}
               <div className="modal-action-icons">
-                <button 
-                  className="icon-btn" 
-                  onClick={(e) => {
-                    if (currentMediaType === 'tv' && !isWatched) {
-                      setSelectingSeason(true)
-                    } else {
-                      toggleWatched(e)
-                    }
-                  }} 
-                  title={isWatched ? 'Mark unwatched' : 'Mark as watched'}
-                >
-                  {isWatched ? <Check size={18} /> : <Eye size={18} />}
-                </button>
-                {selectingSeason && currentMediaType === 'tv' && (
-                  <select
-                    className="season-dropdown"
-                    onChange={(e) => {
-                      const season = parseInt(e.target.value)
-                      if (season) {
-                        toggleWatched({ stopPropagation: () => {} } as any, season)
-                        setSelectingSeason(false)
-                      }
-                    }}
-                    onBlur={() => setSelectingSeason(false)}
-                    autoFocus
-                  >
-                    <option value="">Select season...</option>
-                    {seasons.map((s) => (
-                      <option key={s.season_number} value={s.season_number}>
-                        {s.name || `Season ${s.season_number}`}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button 
-                  className="icon-btn" 
-                  onClick={toggleLike} 
-                  title={isLiked ? 'Unlike' : 'Like'}
-                >
-                  <Heart size={18} fill={isLiked ? 'var(--danger)' : 'none'} />
-                </button>
-                <button 
-                  className="icon-btn" 
-                  onClick={toggleWatchlist} 
-                  title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
-                >
-                  {inWatchlist ? <Trash2 size={18} /> : <Plus size={18} />}
-                </button>
                 {(details as any).trailerKey && (
                   <button 
                     className="icon-btn" 
@@ -482,6 +561,40 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                     <Play size={18} />
                   </button>
                 )}
+                <div className="actions-dropdown-wrapper" ref={actionsDropdownRef}>
+                  <button 
+                    className="icon-btn" 
+                    onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+                    title="Actions"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                  {showActionsDropdown && (
+                    <div className="actions-dropdown">
+                      <button 
+                        className="dropdown-item" 
+                        onClick={(e) => { toggleWatched(e); setShowActionsDropdown(false) }}
+                      >
+                        {isWatched ? <Check size={16} /> : <Eye size={16} />}
+                        {isWatched ? 'Mark as Unwatched' : currentMediaType === 'tv' ? 'Mark Series as Watched' : 'Mark as Watched'}
+                      </button>
+                      <button 
+                        className="dropdown-item" 
+                        onClick={() => { toggleLike({ stopPropagation: () => {} } as React.MouseEvent); setShowActionsDropdown(false) }}
+                      >
+                        <Heart size={16} fill={isLiked ? 'var(--danger)' : 'none'} />
+                        {isLiked ? 'Unlike' : 'Like'}
+                      </button>
+                      <button 
+                        className="dropdown-item" 
+                        onClick={() => { toggleWatchlist({ stopPropagation: () => {} } as React.MouseEvent); setShowActionsDropdown(false) }}
+                      >
+                        {inWatchlist ? <Trash2 size={16} /> : <Plus size={16} />}
+                        {inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button className="icon-btn" onClick={closeModal} title="Close">
                   <X size={18} />
                 </button>
@@ -585,6 +698,66 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                     ) : (
                       <p className="provider-empty">Not available for streaming in your selected regions</p>
                     )}
+                  </div>
+                )}
+                {currentMediaType === 'tv' && seasons.length > 0 && (
+                  <div className="modal-seasons">
+                    <h3>Seasons</h3>
+                    <div className="season-accordion">
+                      {seasons.map((s) => {
+                        const seasonKey = s.season_number
+                        const episodes = seasonEpisodes[seasonKey] || []
+                        const isExpanded = expandedSeason === seasonKey
+                        const watchedCount = episodes.filter((ep) => watchedEpisodes[`${seasonKey}-${ep.episode_number}`]).length
+                        return (
+                          <div key={seasonKey} className="season-item">
+                            <div
+                              className="season-header"
+                              onClick={() => {
+                                if (!isExpanded) {
+                                  setExpandedSeason(seasonKey)
+                                  fetchSeasonEpisodes(seasonKey)
+                                } else {
+                                  setExpandedSeason(null)
+                                }
+                              }}
+                            >
+                              <ChevronDown size={16} className={`chevron ${isExpanded ? 'expanded' : ''}`} />
+                              <span className="season-name">{s.name || `Season ${seasonKey}`}</span>
+                              {seasonEpisodes[seasonKey]?.length ? (
+                                <span className="season-progress">{watchedCount}/{seasonEpisodes[seasonKey].length}</span>
+                              ) : null}
+                            </div>
+                            {isExpanded && (
+                              <div className="season-episodes">
+                                {loadingEpisodes === seasonKey ? (
+                                  <div className="loading-episodes">Loading episodes...</div>
+                                ) : episodes.length > 0 ? (
+                                  <>
+                                    <div className="season-actions">
+                                      <button className="mark-all-btn" onClick={() => markSeasonWatched(seasonKey)}>Mark All Watched</button>
+                                      <button className="mark-all-btn" onClick={() => markSeasonUnwatched(seasonKey)}>Mark All Unwatched</button>
+                                    </div>
+                                    {episodes.map((ep) => {
+                                      const isEpisodeWatched = watchedEpisodes[`${seasonKey}-${ep.episode_number}`]
+                                      return (
+                                        <div key={ep.id} className={`episode-row ${isEpisodeWatched ? 'watched' : ''}`} onClick={() => toggleEpisodeWatched(seasonKey, ep.episode_number)}>
+                                          <span className="episode-number">E{ep.episode_number}</span>
+                                          <span className="episode-name">{ep.name || `Episode ${ep.episode_number}`}</span>
+                                          <span className={`episode-check ${isEpisodeWatched ? 'checked' : ''}`}>
+                                            {isEpisodeWatched ? <Check size={14} /> : <Eye size={14} />}
+                                          </span>
+                                        </div>
+                                      )
+                                    })}
+                                  </>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
                 <div className="modal-note">
