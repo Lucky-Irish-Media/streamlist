@@ -52,6 +52,7 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 - Use TypeScript for all files (.ts/.tsx)
 - Enable strict mode in TypeScript (already configured)
 - No comments unless explaining complex logic or business rules
+- Never use long em dash (—) in any content or code
 
 ### Imports
 - Use path aliases: `@/*` maps to project root
