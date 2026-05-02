@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, Plus, Heart, Users, HelpCircle, FileText, ChevronRight } from 'lucide-react'
+import { Search, Plus, Heart, Users, HelpCircle, FileText, ChevronRight, Check, Eye, Play, X } from 'lucide-react'
 
 const TUTORIAL_SECTIONS = [
   {
@@ -15,21 +15,33 @@ const TUTORIAL_SECTIONS = [
   {
     icon: Plus,
     title: 'Watchlist',
-    description: 'Add shows and movies to your watchlist to keep track of what you want to watch. Click the plus icon on any media card or use the actions menu (⋯) in the detail modal. Mark items as watched when you\'re done.',
+    description: (
+      <>
+        Add shows and movies to your watchlist (<Plus size={14} />) to keep track of what you want to watch. Click the plus icon on any media card or use the actions menu (<span style={{fontSize: '14px'}}>⋯</span>) in the detail modal. Mark items as watched (<Check size={14} />) when you&apos;re done.
+      </>
+    ),
     link: '/watchlist',
     linkText: 'View Watchlist',
   },
   {
     icon: Heart,
     title: 'Favorites',
-    description: 'Like movies and shows you enjoy to get better recommendations tailored to your taste. Click the heart icon on any media card or use the actions menu (⋯) in the detail modal to like or unlike.',
+    description: (
+      <>
+        Like movies and shows (<Heart size={14} />) you enjoy to get better recommendations tailored to your taste. Click the heart icon on any media card or use the actions menu (<span style={{fontSize: '14px'}}>⋯</span>) in the detail modal to like or unlike.
+      </>
+    ),
     link: '/preferences',
     linkText: 'Update Preferences',
   },
   {
     icon: FileText,
     title: 'Media Details',
-    description: 'Click any movie or show card to open the detail modal. Use the top buttons to watch a trailer (▶️), access the actions menu (⋯) to mark watched, like, or add to watchlist, and close (✕). The modal displays hero image, poster, overview, streaming providers, and for TV shows - season/episode tracking with notes.',
+    description: (
+      <>
+        Click any movie or show card to open the detail modal. Use the top buttons to watch a trailer (<Play size={14} />), access the actions menu (<span style={{fontSize: '14px'}}>⋯</span>) to mark watched (<Check size={14} />), like (<Heart size={14} />), or add to watchlist (<Plus size={14} />), and close (<X size={14} />). The modal displays hero image, poster, overview, streaming providers, and for TV shows - season/episode tracking with notes.
+      </>
+    ),
     link: '/browse',
     linkText: 'Try it Now',
   },
