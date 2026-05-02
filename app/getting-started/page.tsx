@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, List, Heart, Users, HelpCircle, Play } from 'lucide-react'
+import { Search, List, Heart, Users, HelpCircle, Play, ChevronRight } from 'lucide-react'
 
 const TUTORIAL_SECTIONS = [
   {
@@ -29,7 +29,7 @@ const TUTORIAL_SECTIONS = [
   {
     icon: Play,
     title: 'Media Details',
-    description: 'Click any movie or show card to open the detail modal. View trailers, cast info, and streaming providers. Add notes, mark as watched, or add to your watchlist directly from the modal.',
+    description: 'Click any movie or show card to open the detail modal. Use the top buttons to watch trailers (▶️), access the actions menu (⋯) to mark watched, like, or add to watchlist, and close (✕). The modal displays hero image, poster, overview, streaming providers, and for TV shows—season/episode tracking with notes.',
     link: '/browse',
     linkText: 'Try it Now',
   },
@@ -44,6 +44,7 @@ const TUTORIAL_SECTIONS = [
 
 export default function GettingStartedPage() {
   const [hideTutorial, setHideTutorial] = useState(false)
+  const [expandedSections, setExpandedSections] = useState<number[]>([])
 
   useEffect(() => {
     const stored = localStorage.getItem('streamlist_hide_getting_started')
@@ -55,6 +56,12 @@ export default function GettingStartedPage() {
   const dismissTutorial = () => {
     localStorage.setItem('streamlist_hide_getting_started', 'true')
     setHideTutorial(true)
+  }
+
+  const toggleSection = (index: number) => {
+    setExpandedSections(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    )
   }
 
   if (hideTutorial) {
@@ -82,41 +89,68 @@ export default function GettingStartedPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', marginBottom: '48px' }}>
-          {TUTORIAL_SECTIONS.map((section, index) => (
-            <div key={section.title} style={{
-              display: 'flex',
-              gap: '24px',
-              padding: '24px',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              alignItems: 'flex-start',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '48px',
-                height: '48px',
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '48px' }}>
+          {TUTORIAL_SECTIONS.map((section, index) => {
+            const isExpanded = expandedSections.includes(index)
+            return (
+              <div key={section.title} style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
                 borderRadius: '12px',
-                background: 'var(--accent)',
-                color: 'var(--bg-primary)',
-                flexShrink: 0,
+                overflow: 'hidden',
               }}>
-                <section.icon size={24} />
+                <button
+                  onClick={() => toggleSection(index)}
+                  style={{
+                    display: 'flex',
+                    gap: '24px',
+                    padding: '24px',
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    alignItems: 'center',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '12px',
+                    background: 'var(--accent)',
+                    color: 'var(--bg-primary)',
+                    flexShrink: 0,
+                  }}>
+                    <section.icon size={24} />
+                  </div>
+                  <h2 style={{ fontSize: '20px', flex: 1 }}>{section.title}</h2>
+                  <ChevronRight
+                    size={20}
+                    style={{
+                      transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                      color: 'var(--text-secondary)',
+                      flexShrink: 0,
+                    }}
+                  />
+                </button>
+                {isExpanded && (
+                  <div style={{ padding: '0 24px 24px', marginLeft: '72px' }}>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.6' }}>
+                      {section.description}
+                    </p>
+                    <Link href={section.link} className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                      {section.linkText}
+                    </Link>
+                  </div>
+                )}
               </div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: '20px', marginBottom: '8px' }}>{section.title}</h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.6' }}>
-                  {section.description}
-                </p>
-                <Link href={section.link} className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>
-                  {section.linkText}
-                </Link>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div style={{ textAlign: 'center', padding: '24px', borderTop: '1px solid var(--border)' }}>
