@@ -15,14 +15,14 @@ const TUTORIAL_SECTIONS = [
   {
     icon: List,
     title: 'Watchlist',
-    description: 'Add shows and movies to your watchlist to keep track of what you want to watch. Mark items as watched when you\'re done.',
+    description: 'Add shows and movies to your watchlist to keep track of what you want to watch. Click the watchlist icon on any media card or use the actions menu (⋯) in the detail modal. Mark items as watched when you\'re done.',
     link: '/watchlist',
     linkText: 'View Watchlist',
   },
   {
     icon: Heart,
     title: 'Favorites',
-    description: 'Like movies and shows you enjoy. This helps us give you better recommendations tailored to your taste.',
+    description: 'Like movies and shows you enjoy to get better recommendations tailored to your taste. Click the heart icon on any media card or use the actions menu (⋯) in the detail modal to like or unlike.',
     link: '/preferences',
     linkText: 'Update Preferences',
   },
