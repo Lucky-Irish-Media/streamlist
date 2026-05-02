@@ -124,3 +124,12 @@ export const userNotes = sqliteTable('user_notes', {
   note: text('note').notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
+
+export const episodesWatched = sqliteTable('episodes_watched', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().references(() => users.id),
+  tmdbTvId: integer('tmdb_tv_id', { mode: 'number' }).notNull(),
+  seasonNumber: integer('season_number', { mode: 'number' }).notNull(),
+  episodeNumber: integer('episode_number', { mode: 'number' }).notNull(),
+  watchedAt: integer('watched_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})

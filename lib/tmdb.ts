@@ -205,9 +205,48 @@ export async function getTVSeriesVideos(tvId: number, tmdbConfig?: TMDBConfig): 
   return fetchFromTMDB(`/tv/${tvId}/videos`, {}, tmdbConfig)
 }
 
-export async function getTVSeasons(tvId: number, tmdbConfig?: TMDBConfig): Promise<{ id: number; name: string; season_number: number; aired_date: string | null }[]> {
+export async function getTVSeasons(tvId: number, tmdbConfig?: TMDBConfig): Promise<{ id: number; name: string; season_number: number; aired_date: string | null; episode_count?: number }[]> {
   const details = await fetchFromTMDB<{ seasons?: { id: number; name: string; season_number: number; aired_date: string | null }[] }>(`/tv/${tvId}`, {}, tmdbConfig)
   return details?.seasons?.filter((s) => s.season_number > 0) || []
+}
+
+export interface SeasonEpisode {
+  id: number
+  name: string
+  episode_number: number
+  overview: string | null
+  still_path: string | null
+  air_date: string | null
+}
+
+export interface SeasonDetails {
+  id: number
+  name: string
+  season_number: number
+  overview: string | null
+  episodes: SeasonEpisode[]
+}
+
+export async function getSeasonDetails(tvId: number, seasonNumber: number, tmdbConfig?: TMDBConfig): Promise<SeasonDetails | null> {
+  try {
+    const details = await fetchFromTMDB<{
+      id: number
+      name: string
+      season_number: number
+      overview: string | null
+      episodes: {
+        id: number
+        name: string
+        episode_number: number
+        overview: string | null
+        still_path: string | null
+        air_date: string | null
+      }[]
+    }>(`/tv/${tvId}/season/${seasonNumber}`, {}, tmdbConfig)
+    return details || null
+  } catch {
+    return null
+  }
 }
 
 export interface CollectionPart {

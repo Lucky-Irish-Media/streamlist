@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestContext } from '@cloudflare/next-on-pages'
-import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos, getCollectionDetails, getTVSeasons, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos, getCollectionDetails, getTVSeasons, getSeasonDetails, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
 
 export const runtime = 'edge'
 
@@ -38,9 +38,16 @@ export async function GET(req: NextRequest) {
   const mediaType = searchParams.get('type')
   const countriesParam = searchParams.get('countries') || 'US'
   const countries = countriesParam.split(',')
+  const seasonParam = searchParams.get('season')
 
   if (!tmdbId || !mediaType) {
     return NextResponse.json({ error: 'Missing id or type' }, { status: 400 })
+  }
+
+  if (mediaType === 'tv' && seasonParam) {
+    const seasonNumber = Number(seasonParam)
+    const seasonDetails = await getSeasonDetails(Number(tmdbId), seasonNumber, tmdb)
+    return NextResponse.json({ episodes: seasonDetails?.episodes || [] })
   }
 
   try {
