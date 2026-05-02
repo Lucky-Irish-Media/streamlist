@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, List, Users, Settings } from 'lucide-react'
+import { Home, Search, List, Users, Settings, HelpCircle } from 'lucide-react'
 
 interface User {
   id: string
@@ -449,6 +449,9 @@ export function Header() {
                 <Link href="/watchlist">Watchlist</Link>
                 <Link href="/groups">Groups</Link>
                 <Link href="/user">Profile</Link>
+                <Link href="/getting-started" title="Getting Started" style={{ display: 'flex', alignItems: 'center' }}>
+                  <HelpCircle size={18} />
+                </Link>
                 <button onClick={logout} className="btn-secondary">Logout</button>
               </>
             ) : (
@@ -486,6 +489,10 @@ export function Header() {
             <Link href="/user" className={pathname === '/user' ? 'active' : ''}>
               <span className="mobile-nav-icon"><Settings size={20} /></span>
               <span>Profile</span>
+            </Link>
+            <Link href="/getting-started" className={pathname === '/getting-started' ? 'active' : ''}>
+              <span className="mobile-nav-icon"><HelpCircle size={20} /></span>
+              <span>Help</span>
             </Link>
           </div>
         </nav>

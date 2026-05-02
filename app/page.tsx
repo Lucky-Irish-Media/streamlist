@@ -45,7 +45,22 @@ function HomeContent() {
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [sortBy, setSortBy] = useState<'popularity' | 'rating' | 'release-date'>('popularity')
+  const [showBanner, setShowBanner] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hidden = localStorage.getItem('streamlist_hide_getting_started')
+      if (hidden !== 'true') {
+        setShowBanner(true)
+      }
+    }
+  }, [])
+
+  const dismissBanner = () => {
+    localStorage.setItem('streamlist_hide_getting_started', 'true')
+    setShowBanner(false)
+  }
 
   const handleSearch = useCallback(() => {
     if (!searchQuery.trim()) return
@@ -128,6 +143,31 @@ function HomeContent() {
 
 return (
     <main className="container page-content">
+      {showBanner && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '16px 20px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          marginBottom: '24px',
+        }}>
+          <div style={{ flex: 1 }}>
+            <strong style={{ marginRight: '8px' }}>New here?</strong>
+            Check out our <Link href="/getting-started" style={{ textDecoration: 'underline' }}>getting started guide</Link>
+          </div>
+          <button onClick={dismissBanner} style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: '20px',
+            padding: '0 4px',
+          }}>×</button>
+        </div>
+      )}
       <div className="browse-search">
         <div className="browse-search-input">
           <input
