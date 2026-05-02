@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, List, Heart, Users, HelpCircle, Play, ChevronRight } from 'lucide-react'
+import { Search, Plus, Heart, Users, HelpCircle, FileText, ChevronRight } from 'lucide-react'
 
 const TUTORIAL_SECTIONS = [
   {
@@ -13,9 +13,9 @@ const TUTORIAL_SECTIONS = [
     linkText: 'Go to Browse',
   },
   {
-    icon: List,
+    icon: Plus,
     title: 'Watchlist',
-    description: 'Add shows and movies to your watchlist to keep track of what you want to watch. Click the watchlist icon on any media card or use the actions menu (⋯) in the detail modal. Mark items as watched when you\'re done.',
+    description: 'Add shows and movies to your watchlist to keep track of what you want to watch. Click the plus icon on any media card or use the actions menu (⋯) in the detail modal. Mark items as watched when you\'re done.',
     link: '/watchlist',
     linkText: 'View Watchlist',
   },
@@ -27,9 +27,9 @@ const TUTORIAL_SECTIONS = [
     linkText: 'Update Preferences',
   },
   {
-    icon: Play,
+    icon: FileText,
     title: 'Media Details',
-    description: 'Click any movie or show card to open the detail modal. Use the top buttons to watch trailers (▶️), access the actions menu (⋯) to mark watched, like, or add to watchlist, and close (✕). The modal displays hero image, poster, overview, streaming providers, and for TV shows—season/episode tracking with notes.',
+    description: 'Click any movie or show card to open the detail modal. Use the top buttons to watch a trailer (▶️), access the actions menu (⋯) to mark watched, like, or add to watchlist, and close (✕). The modal displays hero image, poster, overview, streaming providers, and for TV shows - season/episode tracking with notes.',
     link: '/browse',
     linkText: 'Try it Now',
   },
@@ -158,7 +158,7 @@ export default function GettingStartedPage() {
             You can always access this guide from the help icon (?) in the header.
           </p>
           <button onClick={dismissTutorial} className="btn-secondary" style={{ padding: '10px 24px' }}>
-            Got it — don't show again
+            Got it - don't show again
           </button>
         </div>
       </div>
