@@ -186,16 +186,15 @@ function BrowsePageContent() {
   }
 
   return (
-    <main className="container" style={{ paddingTop: '32px' }}>
-      <div className="browse-search" style={{ marginBottom: '24px', display: 'flex', gap: '12px', position: 'relative' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+    <main className="container page-content">
+      <div className="browse-search">
+        <div className="browse-search-input">
           <input
             ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            style={{ width: '100%' }}
             onKeyDown={e => e.key === 'Enter' && search()}
             onFocus={() => { setShowHistory(true); setSearchHistory(getSearchHistory()) }}
           />
@@ -245,7 +244,7 @@ function BrowsePageContent() {
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as SortOption)}
-            style={{ marginLeft: 'auto', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+            className="sort-select"
           >
             <option value="popularity">Popularity</option>
             <option value="rating">Rating</option>
@@ -307,7 +306,7 @@ function BrowsePageContent() {
 
 export default function BrowsePage() {
   return (
-    <Suspense fallback={<main className="container" style={{ paddingTop: '32px' }}><div className="grid grid-5">{Array.from({ length: 10 }).map((_, i) => <div key={i} style={{ aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: '8px' }} />)}</div></main>}>
+    <Suspense fallback={<main className="container page-content"><div className="grid grid-5">{Array.from({ length: 10 }).map((_, i) => <div key={i} style={{ aspectRatio: '2/3', background: 'var(--bg-tertiary)', borderRadius: '8px' }} />)}</div></main>}>
       <BrowsePageContent />
     </Suspense>
   )

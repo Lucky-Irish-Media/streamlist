@@ -59,7 +59,7 @@ export default function GroupsPage() {
 
   if (!user) {
     return (
-      <main className="container" style={{ paddingTop: '32px' }}>
+      <main className="container page-content">
         <EmptyState
           icon={Lock}
           title="Login Required"
@@ -72,20 +72,12 @@ export default function GroupsPage() {
   }
 
   return (
-    <main className="container" style={{ paddingTop: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+    <main className="container page-content">
+      <div className="page-header">
         <h1>Your Groups</h1>
         <button
           onClick={() => setShowCreateModal(true)}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: 'var(--accent)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 600
-          }}
+          className="btn-accent"
         >
           Create Group
         </button>

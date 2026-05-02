@@ -16,6 +16,9 @@
   --success: #3fb950;
   --danger: #f85149;
   --header-height: 60px;
+  --surface: var(--bg-secondary);
+  --border-color: var(--border);
+  --accent-primary: var(--accent);
 }
 
 body {
@@ -64,17 +67,16 @@ button {
   background-color: var(--border);
 }
 
-input, textarea {
+input, textarea, select {
   background-color: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
   padding: 10px 14px;
   font-size: 14px;
-  width: 100%;
 }
 
-input:focus, textarea:focus {
+input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -83,6 +85,49 @@ input:focus, textarea:focus {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
+.page-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+@media (max-width: 768px) {
+  .page-content {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 100px;
+  }
+}
+
+.main-content {
+  padding-top: 32px;
+  padding-bottom: 80px;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding-bottom: 100px;
+  }
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .header {
@@ -139,6 +184,18 @@ input:focus, textarea:focus {
 .btn-hero:hover {
   background-color: var(--accent-hover);
   text-decoration: none;
+}
+
+.btn-accent {
+  background-color: var(--accent);
+  color: var(--bg-primary);
+  padding: 10px 20px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.btn-accent:hover {
+  background-color: var(--accent-hover);
 }
 
 .mobile-menu-btn {
@@ -665,6 +722,43 @@ input:focus, textarea:focus {
   transform: scale(1.1);
 }
 
+.browse-search {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.browse-search > .btn-primary {
+  padding: 10px 20px;
+  white-space: nowrap;
+}
+
+.browse-search-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.browse-search-input input {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .browse-search {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .browse-search-input {
+    min-width: 100%;
+  }
+}
+
+.browse-search-input {
+  flex: 1;
+  max-width: 400px;
+}
+
 @media (max-width: 480px) {
   .add-btn {
     bottom: 80px;
@@ -677,8 +771,9 @@ input:focus, textarea:focus {
 @media (max-width: 768px) {
   .browse-search {
     flex-direction: column;
+    align-items: stretch;
   }
-  .browse-search input {
+  .browse-search-input {
     max-width: 100%;
   }
   .browse-tabs {
@@ -724,6 +819,20 @@ input:focus, textarea:focus {
   margin-top: 8px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.sort-select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  min-width: 140px;
+  margin-left: auto;
+  width: auto;
+}
+
+.empty-message {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 40px;
 }
 
 .icon-btn {
@@ -1155,6 +1264,32 @@ input:focus, textarea:focus {
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-tab {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-tab:hover {
+  color: var(--text-primary);
+}
+
+.filter-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
 }
 
 .tab {

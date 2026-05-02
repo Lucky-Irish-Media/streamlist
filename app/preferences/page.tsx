@@ -264,7 +264,7 @@ export default function PreferencesPage() {
   }
 
   return (
-    <main className="container" style={{ paddingTop: '40px' }}>
+    <main className="container page-content">
       <h1 style={{ marginBottom: '32px' }}>Your Preferences</h1>
 
       <div className="section">

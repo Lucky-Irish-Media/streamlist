@@ -97,7 +97,7 @@ export default function WatchlistPage() {
 
   if (!user) {
     return (
-      <main className="container" style={{ paddingTop: '32px' }}>
+      <main className="container page-content">
         <EmptyState
           icon={Lock}
           title="Login Required"
@@ -110,14 +110,14 @@ export default function WatchlistPage() {
   }
 
   return (
-    <main className="container" style={{ paddingTop: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+    <main className="container page-content">
+      <div className="page-header">
         <h1>Your Watchlist</h1>
         {items.length > 0 && (
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as SortOption)}
-            style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+            className="sort-select"
           >
             <option value="date-added">Date Added</option>
             <option value="rating">Rating</option>
@@ -128,43 +128,22 @@ export default function WatchlistPage() {
       </div>
 
       {items.length > 0 && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border)' }}>
+        <div className="filter-tabs">
           <button
             onClick={() => setFilterBy('to-watch')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: filterBy === 'to-watch' ? 'var(--bg-secondary)' : 'transparent',
-              color: filterBy === 'to-watch' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-              borderBottom: filterBy === 'to-watch' ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer'
-            }}
+            className={`filter-tab ${filterBy === 'to-watch' ? 'active' : ''}`}
           >
             To Watch
           </button>
           <button
             onClick={() => setFilterBy('all')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: filterBy === 'all' ? 'var(--bg-secondary)' : 'transparent',
-              color: filterBy === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-              borderBottom: filterBy === 'all' ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer'
-            }}
+            className={`filter-tab ${filterBy === 'all' ? 'active' : ''}`}
           >
             All
           </button>
           <button
             onClick={() => setFilterBy('watched')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: filterBy === 'watched' ? 'var(--bg-secondary)' : 'transparent',
-              color: filterBy === 'watched' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-              borderBottom: filterBy === 'watched' ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer'
-            }}
+            className={`filter-tab ${filterBy === 'watched' ? 'active' : ''}`}
           >
             Watched
           </button>

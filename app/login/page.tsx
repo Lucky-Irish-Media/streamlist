@@ -32,7 +32,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="container" style={{ paddingTop: '60px' }}>
+    <main className="container page-content">
       <form onSubmit={handleLogin} className="auth-form">
         <h2>Welcome to StreamList</h2>
         {error && <div className="error">{error}</div>}

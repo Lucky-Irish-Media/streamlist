@@ -325,7 +325,7 @@ export default function GroupPage() {
 
   if (!user) {
     return (
-      <main className="container" style={{ paddingTop: '32px' }}>
+      <main className="container page-content">
         <EmptyState
           icon={Lock}
           title="Login Required"
@@ -339,14 +339,14 @@ export default function GroupPage() {
 
   if (loading) {
     return (
-      <main className="container" style={{ paddingTop: '32px' }}>
+      <main className="container page-content">
         <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="container" style={{ paddingTop: '32px' }}>
+    <main className="container page-content">
       <div style={{ marginBottom: '24px' }}>
         <Link href="/groups" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>← Back to Groups</Link>
       </div>

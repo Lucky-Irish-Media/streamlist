@@ -56,7 +56,7 @@ export default function JoinGroupPage() {
 
   if (!user) {
     return (
-      <main className="container" style={{ paddingTop: '32px' }}>
+      <main className="container page-content">
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔐</div>
           <h2 style={{ marginBottom: '8px' }}>Login Required</h2>
@@ -82,7 +82,7 @@ export default function JoinGroupPage() {
   }
 
   return (
-    <main className="container" style={{ paddingTop: '32px' }}>
+    <main className="container page-content">
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
         {status === 'loading' || status === 'joining' ? (
           <>

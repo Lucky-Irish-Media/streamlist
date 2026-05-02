@@ -96,7 +96,7 @@ function HomeContent() {
 
   if (loading) {
     return (
-      <main className="container" style={{ paddingTop: '32px' }}>
+      <main className="container page-content">
         <section className="section">
           <SkeletonGrid count={5} />
         </section>
@@ -126,17 +126,16 @@ function HomeContent() {
 
   const sortedForYou = sortItems([...(data?.forYou || [])])
 
-  return (
-    <main className="container" style={{ paddingTop: '32px' }}>
-      <div className="browse-search" style={{ marginBottom: '24px', display: 'flex', gap: '12px', position: 'relative' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+return (
+    <main className="container page-content">
+      <div className="browse-search">
+        <div className="browse-search-input">
           <input
             ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search movies and TV shows..."
-            style={{ width: '100%' }}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             onFocus={() => setShowHistory(true)}
           />
@@ -167,7 +166,7 @@ function HomeContent() {
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as 'popularity' | 'rating' | 'release-date')}
-          style={{ marginLeft: 'auto', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+          className="sort-select"
         >
           <option value="popularity">Popularity</option>
           <option value="rating">Rating</option>
