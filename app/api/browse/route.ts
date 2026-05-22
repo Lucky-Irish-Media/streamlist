@@ -7,6 +7,8 @@ import {
   cachedGetPopularTVShows,
   cachedGetNowPlaying,
   cachedGetOnTheAir,
+  cachedDiscoverMovies,
+  cachedDiscoverTVShows,
 } from '@/lib/tmdb-cache'
 
 export const runtime = 'edge'
@@ -30,50 +32,93 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const tab = searchParams.get('tab') || 'trending'
     const page = parseInt(searchParams.get('page') || '1', 10)
+    const streamable = searchParams.get('streamable') === 'true'
+    const providerIds = searchParams.get('provider_ids')
+    const watchRegion = searchParams.get('watch_region') || 'US'
 
     let results: any[] = []
     let totalPages = 1
 
-    if (tab === 'trending') {
-      const data = await cachedGetTrending('all', page, tmdb, env as any)
-      results = data.results.map((m: any) => ({
-        ...m,
-        mediaType: m.media_type || 'movie',
-        image: getImageUrl(m.poster_path || m.backdrop_path)
-      }))
-      totalPages = data.total_pages
-    } else if (tab === 'movies') {
-      const data = await cachedGetPopularMovies(page, tmdb, env as any)
-      results = data.results.map((m: any) => ({
-        ...m,
-        mediaType: 'movie',
-        image: getImageUrl(m.poster_path)
-      }))
-      totalPages = data.total_pages
-    } else if (tab === 'tv') {
-      const data = await cachedGetPopularTVShows(page, tmdb, env as any)
-      results = data.results.map((m: any) => ({
-        ...m,
-        mediaType: 'tv',
-        image: getImageUrl(m.poster_path)
-      }))
-      totalPages = data.total_pages
-    } else if (tab === 'new-movies') {
-      const data = await cachedGetNowPlaying(page, tmdb, env as any)
-      results = data.results.map((m: any) => ({
-        ...m,
-        mediaType: 'movie',
-        image: getImageUrl(m.poster_path)
-      }))
-      totalPages = data.total_pages
-    } else if (tab === 'new-tv') {
-      const data = await cachedGetOnTheAir(page, tmdb, env as any)
-      results = data.results.map((m: any) => ({
-        ...m,
-        mediaType: 'tv',
-        image: getImageUrl(m.poster_path)
-      }))
-      totalPages = data.total_pages
+    if (streamable && providerIds) {
+      const discoverParams: Record<string, string> = {
+        with_watch_providers: providerIds,
+        watch_region: watchRegion,
+        page: String(page),
+      }
+
+      if (tab === 'trending') {
+        const [movies, tv] = await Promise.all([
+          cachedDiscoverMovies({ ...discoverParams, sort_by: 'popularity.desc' }, tmdb, env as any),
+          cachedDiscoverTVShows({ ...discoverParams, sort_by: 'popularity.desc' }, tmdb, env as any),
+        ])
+        const merged = [...movies.results, ...tv.results]
+        results = merged.map((m: any) => ({
+          ...m,
+          mediaType: (m as any).media_type || 'movie',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = Math.max(movies.total_pages, tv.total_pages)
+      } else if (tab === 'movies' || tab === 'new-movies') {
+        const sortBy = tab === 'new-movies' ? 'primary_release_date.desc' : 'popularity.desc'
+        const data = await cachedDiscoverMovies({ ...discoverParams, sort_by: sortBy }, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: 'movie',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = data.total_pages
+      } else if (tab === 'tv' || tab === 'new-tv') {
+        const sortBy = tab === 'new-tv' ? 'first_air_date.desc' : 'popularity.desc'
+        const data = await cachedDiscoverTVShows({ ...discoverParams, sort_by: sortBy }, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: 'tv',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = data.total_pages
+      }
+    } else {
+      if (tab === 'trending') {
+        const data = await cachedGetTrending('all', page, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: m.media_type || 'movie',
+          image: getImageUrl(m.poster_path || m.backdrop_path)
+        }))
+        totalPages = data.total_pages
+      } else if (tab === 'movies') {
+        const data = await cachedGetPopularMovies(page, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: 'movie',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = data.total_pages
+      } else if (tab === 'tv') {
+        const data = await cachedGetPopularTVShows(page, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: 'tv',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = data.total_pages
+      } else if (tab === 'new-movies') {
+        const data = await cachedGetNowPlaying(page, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: 'movie',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = data.total_pages
+      } else if (tab === 'new-tv') {
+        const data = await cachedGetOnTheAir(page, tmdb, env as any)
+        results = data.results.map((m: any) => ({
+          ...m,
+          mediaType: 'tv',
+          image: getImageUrl(m.poster_path)
+        }))
+        totalPages = data.total_pages
+      }
     }
 
     return NextResponse.json({

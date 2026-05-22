@@ -831,6 +831,21 @@ input:focus, textarea:focus, select:focus {
   width: auto;
 }
 
+.streamable-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.streamable-toggle.active {
+  border-color: var(--accent) !important;
+  background-color: rgba(88, 166, 255, 0.15) !important;
+  color: var(--accent) !important;
+}
+
 .empty-message {
   color: var(--text-secondary);
   text-align: center;

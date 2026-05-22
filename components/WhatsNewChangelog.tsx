@@ -1,0 +1,86 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+const CURRENT_VERSION = '1.0.0'
+
+const CHANGELOG = [
+  {
+    version: '1.0.0',
+    date: '2026-05-02',
+    items: [
+      'Initial release of StreamList',
+      'Watchlist management for movies and TV shows',
+      'Browse trending and popular media from TMDB',
+      'User preferences and recommendations',
+      'Group support for sharing watchlists',
+    ],
+  },
+]
+
+export default function WhatsNewChangelog() {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const lastSeen = localStorage.getItem('streamlist_last_seen_version')
+    if (lastSeen !== CURRENT_VERSION) {
+      setShow(true)
+    }
+  }, [])
+
+  const dismiss = () => {
+    localStorage.setItem('streamlist_last_seen_version', CURRENT_VERSION)
+    setShow(false)
+  }
+
+  if (!show) return null
+
+  return (
+    <div className="modal-overlay" onClick={dismiss}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">What's New</h2>
+          <button onClick={dismiss} className="close-btn">
+            ×
+          </button>
+        </div>
+        <div style={{ marginTop: '16px' }}>
+          {CHANGELOG.filter((entry) => entry.version === CURRENT_VERSION)
+            .map((entry) => (
+              <div key={entry.version} style={{ marginBottom: '24px' }}>
+                <h3 style={{
+                  color: 'var(--text-primary)',
+                  fontSize: '18px',
+                  marginBottom: '8px',
+                }}>
+                  Version {entry.version} - {entry.date}
+                </h3>
+                <ul style={{
+                  color: 'var(--text-secondary)',
+                  paddingLeft: '20px',
+                  lineHeight: '1.6',
+                }}>
+                  {entry.items.map((item, i) => (
+                    <li key={i} style={{ marginBottom: '6px' }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+        </div>
+        <button onClick={dismiss} style={{
+          marginTop: '16px',
+          padding: '8px 16px',
+          background: 'var(--accent)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '14px',
+        }}>
+          Got it
+        </button>
+      </div>
+    </div>
+  )
+}

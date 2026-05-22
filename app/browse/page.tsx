@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import MediaCard from '@/components/MediaCard'
 import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
-import { Search } from 'lucide-react'
+import { useUser } from '@/components/UserContext'
+import { Search, Monitor } from 'lucide-react'
 import type { MediaItem } from '@/types/media'
 
 type Tab = 'trending' | 'movies' | 'tv' | 'new-movies' | 'new-tv'
@@ -51,8 +52,10 @@ function BrowsePageContent() {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab') as Tab | null
   const initialQuery = searchParams.get('q')
+  const { user } = useUser()
   const [tab, setTab] = useState<Tab>(initialTab || 'trending')
   const [sortBy, setSortBy] = useState<SortOption>('popularity')
+  const [streamable, setStreamable] = useState(false)
   const [items, setItems] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -65,6 +68,18 @@ function BrowsePageContent() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isInitialSearch = useRef(true)
 
+  const providerIds = useMemo(() => {
+    if (!user?.streamingServices?.length) return ''
+    return user.streamingServices.map(s => s.id).join(',')
+  }, [user])
+
+  const watchRegion = useMemo(() => {
+    const countries = (user as any)?.countries
+    return Array.isArray(countries) && countries.length > 0 ? countries[0] : 'US'
+  }, [user])
+
+  const hasStreamingServices = providerIds.length > 0
+
   const fetchData = useCallback(async (pageNum: number, isLoadMore = false) => {
     if (isLoadMore) {
       setLoadingMore(true)
@@ -72,7 +87,12 @@ function BrowsePageContent() {
       setLoading(true)
     }
 
-    const res = await fetch(`/api/browse?tab=${tab}&page=${pageNum}`)
+    let url = `/api/browse?tab=${tab}&page=${pageNum}`
+    if (streamable && hasStreamingServices) {
+      url += `&streamable=true&provider_ids=${encodeURIComponent(providerIds)}&watch_region=${watchRegion}`
+    }
+
+    const res = await fetch(url)
     const data = await res.json() as { results?: MediaItem[]; hasMore?: boolean }
 
     if (!res.ok || !data.results) {
@@ -90,7 +110,7 @@ function BrowsePageContent() {
     setPage(pageNum)
     setLoading(false)
     setLoadingMore(false)
-  }, [tab])
+  }, [tab, streamable, providerIds, watchRegion, hasStreamingServices])
 
   useEffect(() => {
     setItems([])
@@ -238,6 +258,16 @@ function BrowsePageContent() {
         {searchQuery && (
           <button onClick={() => { setSearchQuery(''); setSearchResults([]) }} className="btn-secondary">
             Clear
+          </button>
+        )}
+        {hasStreamingServices && !searchQuery && (
+          <button
+            onClick={() => setStreamable(s => !s)}
+            className={streamable ? 'btn-primary streamable-toggle active' : 'btn-secondary streamable-toggle'}
+            title="Only show content available on your streaming services"
+          >
+            <Monitor size={16} />
+            <span>Streamable Now</span>
           </button>
         )}
         {!searchQuery && items.length > 0 && (
