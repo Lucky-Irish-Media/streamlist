@@ -70,7 +70,7 @@ function BrowsePageContent() {
 
   const providerIds = useMemo(() => {
     if (!user?.streamingServices?.length) return ''
-    return user.streamingServices.map(s => s.id).join(',')
+    return user.streamingServices.map(s => s.id).join('|')
   }, [user])
 
   const watchRegion = useMemo(() => {
