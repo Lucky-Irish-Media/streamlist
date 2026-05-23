@@ -49,6 +49,7 @@ async function buildHybridRecommendations(
   streamingServices: { id: string; name: string }[],
   watchlist: { tmdbId: number; mediaType: string }[],
   watched: { tmdbId: number; mediaType: string }[],
+  dismissed: { tmdbId: number; mediaType: string }[],
   countries: string[],
   tmdb: TMDBConfig,
 ): Promise<ScoredItem[]> {
@@ -58,6 +59,7 @@ async function buildHybridRecommendations(
     ...likes.map(l => l.tmdbId),
     ...watchlist.map(w => w.tmdbId),
     ...watched.map(w => w.tmdbId),
+    ...dismissed.map(d => d.tmdbId),
   ])
 
   const region = countries?.[0] || 'US'
@@ -297,20 +299,22 @@ export async function GET(req: NextRequest) {
     likes: { tmdbId: number; mediaType: string; title: string }[]
     watchlist: { tmdbId: number; mediaType: string }[]
     watched: { tmdbId: number; mediaType: string }[]
+    dismissed: { tmdbId: number; mediaType: string }[]
     countries: string[]
-  } = { streamingServices: [], genres: [], likes: [], watchlist: [], watched: [], countries: ['US'] }
+  } = { streamingServices: [], genres: [], likes: [], watchlist: [], watched: [], dismissed: [], countries: ['US'] }
 
   if (sessionId && dbEnv.DB) {
     const userId = await getSessionUser(dbEnv, sessionId)
     if (userId) {
       const db = getDB(dbEnv)
 
-      const [streamingServices, genres, likes, watchlistItems, watchedItems, users] = await Promise.all([
+      const [streamingServices, genres, likes, watchlistItems, watchedItems, dismissedItems, users] = await Promise.all([
         db.select().from(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, userId)).all(),
         db.select().from(schema.userGenres).where(eq(schema.userGenres.userId, userId)).all(),
         db.select().from(schema.userLikes).where(eq(schema.userLikes.userId, userId)).all(),
         db.select().from(schema.watchlist).where(eq(schema.watchlist.userId, userId)).all(),
         db.select().from(schema.watched).where(eq(schema.watched.userId, userId)).all(),
+        db.select().from(schema.dismissedRecommendations).where(eq(schema.dismissedRecommendations.userId, userId)).all(),
         db.select().from(schema.users).where(eq(schema.users.id, userId)).all(),
       ])
 
@@ -320,6 +324,7 @@ export async function GET(req: NextRequest) {
         likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
         watchlist: watchlistItems.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })),
         watched: watchedItems.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })),
+        dismissed: dismissedItems.map(d => ({ tmdbId: d.tmdbId, mediaType: d.mediaType })),
         countries: users[0]?.countries ? JSON.parse(users[0].countries) : ['US'],
       }
     }
@@ -346,6 +351,7 @@ export async function GET(req: NextRequest) {
     userPreferences.streamingServices,
     userPreferences.watchlist,
     userPreferences.watched,
+    userPreferences.dismissed,
     userPreferences.countries,
     tmdb,
   )
@@ -355,6 +361,7 @@ export async function GET(req: NextRequest) {
     ...userPreferences.likes.map(l => l.tmdbId),
     ...userPreferences.watchlist.map(w => w.tmdbId),
     ...userPreferences.watched.map(w => w.tmdbId),
+    ...userPreferences.dismissed.map(d => d.tmdbId),
   ])
 
   const region = userPreferences.countries?.[0] || 'US'

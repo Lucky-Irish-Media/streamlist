@@ -417,9 +417,15 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
     }
     case 'get_recommendations': {
       const prefs = await getUserPreferences(db, userId)
+      const dismissed = await db
+        .select()
+        .from(schema.dismissedRecommendations)
+        .where(eq(schema.dismissedRecommendations.userId, userId))
+        .all()
       const excludeIds = new Set([
         ...prefs.likes.map((l: any) => l.tmdbId),
         ...prefs.watchlist.map((w: any) => w.tmdbId),
+        ...dismissed.map((d: any) => d.tmdbId),
       ])
 
       let recommendations: any[] = []
@@ -1112,6 +1118,37 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
 
       return { success: true, message: 'Note deleted' }
     }
+    case 'dismiss_recommendation': {
+      const { tmdb_id, media_type } = args as { tmdb_id: number; media_type: string }
+
+      const existing = await db
+        .select()
+        .from(schema.dismissedRecommendations)
+        .where(
+          and(
+            eq(schema.dismissedRecommendations.userId, userId),
+            eq(schema.dismissedRecommendations.tmdbId, tmdb_id),
+            eq(schema.dismissedRecommendations.mediaType, media_type),
+          )
+        )
+        .get()
+
+      if (existing) {
+        await db
+          .delete(schema.dismissedRecommendations)
+          .where(eq(schema.dismissedRecommendations.id, existing.id))
+          .run()
+        return { success: true, dismissed: false, message: 'Dismissal removed' }
+      }
+
+      await db.insert(schema.dismissedRecommendations).values({
+        userId,
+        tmdbId: tmdb_id,
+        mediaType: media_type,
+      }).run()
+
+      return { success: true, dismissed: true, message: 'Recommendation dismissed' }
+    }
     default:
       return { error: `Unknown tool: ${toolName}` }
   }
@@ -1300,6 +1337,7 @@ export async function GET(req: NextRequest) {
     { name: 'get_note', description: 'Get user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
     { name: 'add_note', description: 'Add or update a user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, note: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'note'] } },
     { name: 'delete_note', description: 'Delete a user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
+    { name: 'dismiss_recommendation', description: 'Dismiss a recommendation so it no longer appears in future recommendations', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
   ]
 
   return NextResponse.json({

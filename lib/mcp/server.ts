@@ -206,6 +206,18 @@ const tools = {
       },
     },
   },
+  dismiss_recommendation: {
+    name: 'dismiss_recommendation',
+    description: 'Dismiss a recommendation so it no longer appears in recommendations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tmdb_id: { type: 'number', description: 'The TMDB ID of the movie or TV show to dismiss' },
+        media_type: { type: 'string', enum: ['movie', 'tv'], description: 'The type of media' },
+      },
+      required: ['tmdb_id', 'media_type'],
+    },
+  },
 }
 
 async function handleGetWatchlist(): Promise<{ content: Array<{ type: string; text: string }> }> {
@@ -723,6 +735,43 @@ async function handleGetLoginStats(days = 30): Promise<{ content: Array<{ type: 
   }
 }
 
+async function handleDismissRecommendation(tmdbId: number, mediaType: string): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const ctx = getContext()
+  const database = getDb(ctx.env)
+
+  const existing = await database
+    .select()
+    .from(schema.dismissedRecommendations)
+    .where(
+      and(
+        eq(schema.dismissedRecommendations.userId, ctx.userId),
+        eq(schema.dismissedRecommendations.tmdbId, tmdbId),
+        eq(schema.dismissedRecommendations.mediaType, mediaType),
+      )
+    )
+    .get()
+
+  if (existing) {
+    await database
+      .delete(schema.dismissedRecommendations)
+      .where(eq(schema.dismissedRecommendations.id, existing.id))
+      .run()
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: true, dismissed: false, message: 'Dismissal removed' }) }],
+    }
+  }
+
+  await database.insert(schema.dismissedRecommendations).values({
+    userId: ctx.userId,
+    tmdbId,
+    mediaType,
+  }).run()
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: true, dismissed: true, message: 'Recommendation dismissed' }) }],
+  }
+}
+
 export const server = new Server(
   {
     name: 'streamlist-mcp-server',
@@ -780,6 +829,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await handleGetFailedLoginAttempts(args.start_date as string, args.end_date as string, args.limit as number, args.offset as number)
       case 'get_login_stats':
         return await handleGetLoginStats(args.days as number)
+      case 'dismiss_recommendation':
+        return await handleDismissRecommendation(args.tmdb_id as number, args.media_type as string)
       default:
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${name}` }) }],

@@ -125,6 +125,14 @@ export const userNotes = sqliteTable('user_notes', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 
+export const dismissedRecommendations = sqliteTable('dismissed_recommendations', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().references(() => users.id),
+  tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
+  mediaType: text('media_type').notNull(),
+  dismissedAt: integer('dismissed_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})
+
 export const episodesWatched = sqliteTable('episodes_watched', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().references(() => users.id),

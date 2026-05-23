@@ -109,6 +109,16 @@ CREATE TABLE IF NOT EXISTS group_polls (
     FOREIGN KEY (group_id) REFERENCES user_groups (id)
 );
 
+-- Dismissed recommendations
+CREATE TABLE IF NOT EXISTS dismissed_recommendations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    tmdb_id INTEGER NOT NULL,
+    media_type TEXT NOT NULL,
+    dismissed_at INTEGER NOT NULL DEFAULT (CAST((strftime('%s', 'now') * 1000) AS INTEGER)),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
 -- Group poll votes
 CREATE TABLE IF NOT EXISTS group_poll_votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

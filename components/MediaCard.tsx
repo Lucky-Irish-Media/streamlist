@@ -38,9 +38,10 @@ interface CollectionDetails {
 
 interface MediaCardProps {
   item: MediaItem
+  onDismiss?: (tmdbId: number) => void
 }
 
-export default function MediaCard({ item }: MediaCardProps) {
+export default function MediaCard({ item, onDismiss }: MediaCardProps) {
   const { user, refreshUser } = useUser()
   const [showModal, setShowModal] = useState(false)
   const [details, setDetails] = useState<MediaItem | null>(null)
@@ -470,6 +471,24 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
     openModal()
   }
 
+  const dismissRecommendation = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch('/api/recommendations/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+      })
+      const data = await res.json() as { dismissed?: boolean }
+      if (data.dismissed && onDismiss) {
+        onDismiss(currentMovieId)
+      }
+    } catch (err) {
+      console.error('Failed to dismiss:', err)
+    }
+  }
+
   const title = item.title || item.name || ''
   const releaseDate = item.release_date || item.first_air_date || ''
   const certification = (details as any)?.certification || (item as any).certification
@@ -539,6 +558,22 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
               </span>
             )}
           </div>
+          <button
+            onClick={dismissRecommendation}
+            style={{
+              width: '100%',
+              padding: '4px 0',
+              marginTop: '6px',
+              background: 'none',
+              border: '1px solid var(--danger, #e74c3c)',
+              color: 'var(--danger, #e74c3c)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            dismiss
+          </button>
         </div>
       </div>
 
@@ -591,6 +626,13 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                       >
                         {inWatchlist ? <Trash2 size={16} /> : <Plus size={16} />}
                         {inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                      </button>
+                      <button 
+                        className="dropdown-item" 
+                        onClick={() => { dismissRecommendation({ stopPropagation: () => {} } as React.MouseEvent); setShowActionsDropdown(false) }}
+                      >
+                        <X size={16} />
+                        Dismiss Recommendation
                       </button>
                     </div>
                   )}

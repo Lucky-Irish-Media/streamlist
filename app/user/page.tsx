@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/components/UserContext'
 import { useRouter } from 'next/navigation'
-import { Users, Film, Heart, LogOut, Edit2, Copy, ExternalLink, List } from 'lucide-react'
+import { Users, Film, Heart, LogOut, Edit2, Copy, ExternalLink, List, X } from 'lucide-react'
 
 const SERVICE_NAME_MAP: Record<string, string> = {
   '8': 'Netflix',
@@ -55,7 +55,7 @@ interface Group {
   memberCount: number
 }
 
-type Tab = 'overview' | 'likes' | 'watchlist' | 'history' | 'groups' | 'account'
+type Tab = 'overview' | 'likes' | 'watchlist' | 'history' | 'groups' | 'account' | 'dismissed'
 
 export default function UserPage() {
   const { user, refreshUser, logout } = useUser()
@@ -67,6 +67,8 @@ export default function UserPage() {
   const [watchlistItems, setWatchlistItems] = useState<{ tmdbId: number; mediaType: string; title: string; posterPath: string | null }[]>([])
   const [watchedItems, setWatchedItems] = useState<{ tmdbId: number; mediaType: string; title: string; posterPath: string | null }[]>([])
   const [groups, setGroups] = useState<Group[]>([])
+  const [dismissedItems, setDismissedItems] = useState<{ tmdbId: number; mediaType: string; title: string; posterPath: string | null }[]>([])
+  const [loadingDismissed, setLoadingDismissed] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const getUserCountries = () => {
@@ -155,6 +157,23 @@ export default function UserPage() {
       setGroups((groupsData.groups || []).slice(0, 4))
       setLoading(false)
     })
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    const fetchDismissed = async () => {
+      setLoadingDismissed(true)
+      try {
+        const res = await fetch('/api/recommendations/dismissed', { credentials: 'include' })
+        const data = await res.json() as { dismissed?: { tmdbId: number; mediaType: string; title: string; posterPath: string | null; dismissedAt: string }[] }
+        setDismissedItems((data.dismissed || []).map(d => ({ tmdbId: d.tmdbId, mediaType: d.mediaType, title: d.title, posterPath: d.posterPath })))
+      } catch (err) {
+        console.error('Failed to fetch dismissed items:', err)
+      } finally {
+        setLoadingDismissed(false)
+      }
+    }
+    fetchDismissed()
   }, [user])
 
   const getProviderInfo = (id: string) => {
@@ -249,6 +268,7 @@ export default function UserPage() {
     { id: 'overview', label: 'Overview' },
     { id: 'likes', label: 'Likes', count: user.likes?.length || 0 },
     { id: 'groups', label: 'Groups', count: groups.length },
+    { id: 'dismissed', label: 'Dismissed', count: dismissedItems.length },
     { id: 'account', label: 'Account' },
   ]
 
@@ -549,6 +569,88 @@ export default function UserPage() {
             </div>
           ) : (
             <p style={{ color: 'var(--text-secondary)' }}>You haven't joined any groups yet</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'dismissed' && (
+        <div className="section">
+          <h2 className="section-title" style={{ marginBottom: '24px' }}>Dismissed Recommendations</h2>
+          {loadingDismissed ? (
+            <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+          ) : dismissedItems.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '20px' }}>
+              {dismissedItems.map(item => (
+                <div key={item.tmdbId}>
+                  {item.posterPath ? (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w185${item.posterPath}`}
+                      alt={item.title}
+                      style={{
+                        width: '100%',
+                        borderRadius: '8px',
+                        aspectRatio: '2/3',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      aspectRatio: '2/3',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--bg-tertiary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Film size={24} style={{ color: 'var(--text-secondary)' }} />
+                    </div>
+                  )}
+                  <p style={{
+                    margin: '8px 0 4px 0',
+                    fontSize: '13px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {item.title}
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await fetch('/api/recommendations/dismiss', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
+                          body: JSON.stringify({ tmdbId: item.tmdbId, mediaType: item.mediaType }),
+                        })
+                        setDismissedItems(prev => prev.filter(d => d.tmdbId !== item.tmdbId))
+                      } catch (err) {
+                        console.error('Failed to undismiss:', err)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      background: 'none',
+                      border: '1px solid var(--border)',
+                      borderRadius: '4px',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      width: '100%',
+                    }}
+                  >
+                    <X size={12} />
+                    Undismiss
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-secondary)' }}>No dismissed recommendations</p>
           )}
         </div>
       )}

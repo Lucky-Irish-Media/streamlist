@@ -46,6 +46,7 @@ function HomeContent() {
   const [showHistory, setShowHistory] = useState(false)
   const [sortBy, setSortBy] = useState<'popularity' | 'rating' | 'release-date'>('popularity')
   const [showBanner, setShowBanner] = useState(false)
+  const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -139,7 +140,7 @@ function HomeContent() {
     }
   }
 
-  const sortedForYou = sortItems([...(data?.forYou || [])])
+  const sortedForYou = sortItems([...(data?.forYou || [])]).filter(item => !dismissedIds.has(item.id))
 
 return (
     <main className="container page-content">
@@ -227,7 +228,7 @@ return (
         ) : (
           <div className="grid grid-5">
             {sortedForYou.slice(0, 20).map((item: ScoredMediaItem) => (
-              <MediaCard key={item.id} item={item} />
+              <MediaCard key={item.id} item={item} onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))} />
             ))}
           </div>
         )}
