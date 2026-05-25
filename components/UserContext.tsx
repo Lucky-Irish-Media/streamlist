@@ -22,6 +22,7 @@ interface UserContextType {
   setUser: (user: User | null) => void
   refreshUser: () => Promise<void>
   logout: () => Promise<void>
+  userLoading: boolean
 }
 
 const UserContext = createContext<UserContextType>({
@@ -29,6 +30,7 @@ const UserContext = createContext<UserContextType>({
   setUser: () => {},
   refreshUser: async () => {},
   logout: async () => {},
+  userLoading: true,
 })
 
 export function useUser() {
@@ -65,7 +67,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, setUser, refreshUser, logout }}>
+      <UserContext.Provider value={{ user, setUser, refreshUser, logout, userLoading: loading }}>
       {children}
       {showOnboarding && user && <OnboardingModal user={user} onClose={() => setShowOnboarding(false)} />}
       <WhatsNewChangelog />

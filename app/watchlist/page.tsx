@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
 import EmptyState from '@/components/EmptyState'
-import { SkeletonGrid } from '@/components/Skeleton'
+import LoadingImage from '@/components/LoadingImage'
 import { Lock, ListPlus } from 'lucide-react'
 import type { WatchlistItem, MediaItem } from '@/types/media'
 
@@ -34,7 +34,6 @@ export default function WatchlistPage() {
       const watchedList = watchedData.watched || []
       setWatchlist(list)
       setWatched(watchedList)
-      setLoading(false)
       
       if (list.length > 0) {
         Promise.all(
@@ -42,9 +41,13 @@ export default function WatchlistPage() {
             const res = await fetch(`/api/media?id=${item.tmdbId}&type=${item.mediaType}`)
             return res.json() as Promise<MediaItem & { error?: string }>
           })
-        ).then(results => setItems(results.filter((r) => !(r as MediaItem & { error?: string }).error) as MediaItem[]))
+        ).then(results => {
+          setItems(results.filter((r) => !(r as MediaItem & { error?: string }).error) as MediaItem[])
+          setLoading(false)
+        })
       } else {
         setItems([])
+        setLoading(false)
       }
     })
   }, [])
@@ -151,7 +154,7 @@ export default function WatchlistPage() {
       )}
 
       {loading ? (
-        <SkeletonGrid count={5} />
+        <LoadingImage />
       ) : items.length === 0 ? (
         <EmptyState
           icon={ListPlus}

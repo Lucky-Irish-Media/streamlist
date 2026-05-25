@@ -10,6 +10,9 @@ import {
   cachedDiscoverMovies,
   cachedDiscoverTVShows,
 } from '@/lib/tmdb-cache'
+import { getSessionUser, parseAuthCookie } from '@/lib/auth'
+import { getDB, schema } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 
 export const runtime = 'edge'
 
@@ -36,6 +39,28 @@ export async function GET(req: NextRequest) {
     const providerIds = searchParams.get('provider_ids')
     const watchRegion = searchParams.get('watch_region') || 'US'
 
+    let excludedIds = new Set<number>()
+    let sessionId = parseAuthCookie(req.headers.get('cookie'))
+    if (!sessionId) {
+      sessionId = req.headers.get('x-session-id')
+    }
+    if (sessionId) {
+      try {
+        const userId = await getSessionUser({ DB: (env as any)?.DB }, sessionId)
+        if (userId) {
+          const db = getDB({ DB: (env as any)?.DB })
+          const dismissed = await db
+            .select({ tmdbId: schema.dismissedRecommendations.tmdbId })
+            .from(schema.dismissedRecommendations)
+            .where(eq(schema.dismissedRecommendations.userId, userId))
+            .all()
+          dismissed.forEach(d => excludedIds.add(d.tmdbId))
+        }
+      } catch {
+        // Non-fatal: proceed without filtering
+      }
+    }
+
     let results: any[] = []
     let totalPages = 1
 
@@ -51,12 +76,17 @@ export async function GET(req: NextRequest) {
           cachedDiscoverMovies({ ...discoverParams, sort_by: 'popularity.desc' }, tmdb, env as any),
           cachedDiscoverTVShows({ ...discoverParams, sort_by: 'popularity.desc' }, tmdb, env as any),
         ])
-        const merged = [...movies.results, ...tv.results]
-        results = merged.map((m: any) => ({
+        const movieResults = movies.results.map((m: any) => ({
           ...m,
-          mediaType: (m as any).media_type || 'movie',
+          mediaType: 'movie',
           image: getImageUrl(m.poster_path)
         }))
+        const tvResults = tv.results.map((m: any) => ({
+          ...m,
+          mediaType: 'tv',
+          image: getImageUrl(m.poster_path)
+        }))
+        results = [...movieResults, ...tvResults]
         totalPages = Math.max(movies.total_pages, tv.total_pages)
       } else if (tab === 'movies' || tab === 'new-movies') {
         const sortBy = tab === 'new-movies' ? 'primary_release_date.desc' : 'popularity.desc'
@@ -121,8 +151,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const filtered = excludedIds.size > 0
+      ? results.filter(r => !excludedIds.has(r.id))
+      : results
+
     return NextResponse.json({
-      results,
+      results: filtered,
       page,
       totalPages,
       hasMore: page < totalPages

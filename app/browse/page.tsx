@@ -52,10 +52,10 @@ function BrowsePageContent() {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab') as Tab | null
   const initialQuery = searchParams.get('q')
-  const { user } = useUser()
+  const { user, userLoading } = useUser()
   const [tab, setTab] = useState<Tab>(initialTab || 'trending')
   const [sortBy, setSortBy] = useState<SortOption>('popularity')
-  const [streamable, setStreamable] = useState(false)
+  const [streamable, setStreamable] = useState(true)
   const [items, setItems] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -65,6 +65,7 @@ function BrowsePageContent() {
   const [searchResults, setSearchResults] = useState<MediaItem[]>([])
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isInitialSearch = useRef(true)
 
@@ -113,11 +114,12 @@ function BrowsePageContent() {
   }, [tab, streamable, providerIds, watchRegion, hasStreamingServices])
 
   useEffect(() => {
+    if (userLoading) return
     setItems([])
     setPage(1)
     setHasMore(true)
     fetchData(1)
-  }, [tab, fetchData])
+  }, [tab, fetchData, userLoading])
 
   const performSearch = useCallback(async (query: string, currentTab: Tab) => {
     if (!query.trim()) return
@@ -136,6 +138,18 @@ function BrowsePageContent() {
   useEffect(() => {
     setSearchHistory(getSearchHistory())
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    fetch('/api/recommendations/dismissed', { credentials: 'include' })
+      .then(res => res.json() as Promise<{ dismissed?: { tmdbId: number }[] }>)
+      .then(data => {
+        if (data.dismissed) {
+          setDismissedIds(new Set(data.dismissed.map(d => d.tmdbId)))
+        }
+      })
+      .catch(() => {})
+  }, [user])
 
   useEffect(() => {
     if (isInitialSearch.current && initialQuery) {
@@ -182,6 +196,11 @@ function BrowsePageContent() {
     }
   }
 
+  const handleDismiss = (id: number) => {
+    setDismissedIds(prev => new Set(prev).add(id))
+    setItems(prev => prev.filter(item => item.id !== id))
+  }
+
   const search = async () => {
     if (!searchQuery.trim()) return
     saveSearchToHistory(searchQuery)
@@ -193,7 +212,7 @@ function BrowsePageContent() {
     setSearchResults(data.results || [])
   }
 
-  const displayItems = sortedItems
+  const displayItems = sortedItems.filter(item => !dismissedIds.has(item.id))
 
   const searchPlaceholder = searchType === 'movie' ? 'Search movies...'
     : searchType === 'tv' ? 'Search TV shows...'
@@ -303,7 +322,7 @@ function BrowsePageContent() {
         <>
           <div className="grid grid-5">
             {displayItems.map((item: MediaItem) => (
-              <MediaCard key={item.id} item={item} />
+              <MediaCard key={item.id} item={item} onDismiss={handleDismiss} />
             ))}
           </div>
 

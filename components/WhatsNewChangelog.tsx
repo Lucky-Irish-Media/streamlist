@@ -2,9 +2,20 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.0.0'
+const CURRENT_VERSION = '1.1.0'
 
 const CHANGELOG = [
+  {
+    version: '1.1.0',
+    date: '2026-05-25',
+    items: [
+      'StreamableNow filter enabled by default in Browse',
+      'Dismiss recommendations from Browse grid',
+      'Fixed details modal showing wrong content for TV shows in streamable view',
+      'Improved watchlist loading with animated film reel',
+      'Optimized data fetching to wait for user session before loading',
+    ],
+  },
   {
     version: '1.0.0',
     date: '2026-05-02',

@@ -2,6 +2,13 @@
 
 This file provides guidance for AI agents working on this codebase.
 
+## Tracker Status Rules
+
+Features and tasks/bugs in the project tracker (`/home/qwexer/Nextcloud/Obsidian/Projects/streamlist/`) follow this lifecycle:
+- When implementation is complete, set status to `in-progress` — **never `done`**
+- Features and tasks only get marked `done` when the feature has been **deployed to production**
+- This ensures nothing is considered finished until it's live on production
+
 ## Commands
 
 ### Development
