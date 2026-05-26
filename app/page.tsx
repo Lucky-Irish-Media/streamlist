@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
+import SearchInlineButton from '@/components/SearchInlineButton'
 import { SkeletonGrid } from '@/components/Skeleton'
 import type { RecommendationsData, ScoredMediaItem, MediaItem } from '@/types/media'
 
@@ -169,7 +170,7 @@ return (
           }}>×</button>
         </div>
       )}
-      <div className="browse-search">
+          <div className="browse-search">
         <div className="browse-search-input">
           <input
             ref={searchInputRef}
@@ -180,6 +181,7 @@ return (
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             onFocus={() => setShowHistory(true)}
           />
+          <SearchInlineButton onClick={handleSearch} disabled={!searchQuery.trim()} />
           {showHistory && searchHistory.length > 0 && !searchQuery && (
             <div className="search-history-dropdown">
               <div className="search-history-header">
@@ -203,7 +205,6 @@ return (
             </div>
           )}
         </div>
-        <button onClick={handleSearch} className="btn-primary">Search</button>
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as 'popularity' | 'rating' | 'release-date')}

@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.1.0'
+const CURRENT_VERSION = '1.2.0'
 
 const CHANGELOG = [
+  {
+    version: '1.2.0',
+    date: '2026-05-26',
+    items: [
+      'Redesigned search with inline icon button on Home and Browse pages',
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-05-25',

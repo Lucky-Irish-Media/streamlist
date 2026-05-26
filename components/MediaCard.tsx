@@ -562,17 +562,18 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
             onClick={dismissRecommendation}
             style={{
               width: '100%',
-              padding: '4px 0',
+              padding: '12px 0',
               marginTop: '6px',
               background: 'none',
               border: '1px solid var(--danger, #e74c3c)',
               color: 'var(--danger, #e74c3c)',
               borderRadius: '4px',
-              fontSize: '11px',
+              fontSize: '14px',
               cursor: 'pointer',
+              minHeight: '44px',
             }}
           >
-            dismiss
+            Dismiss
           </button>
         </div>
       </div>

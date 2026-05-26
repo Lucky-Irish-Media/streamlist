@@ -7,6 +7,7 @@ import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
 import { useUser } from '@/components/UserContext'
 import { Search, Monitor } from 'lucide-react'
+import SearchInlineButton from '@/components/SearchInlineButton'
 import type { MediaItem } from '@/types/media'
 
 type Tab = 'trending' | 'movies' | 'tv' | 'new-movies' | 'new-tv'
@@ -227,7 +228,7 @@ function BrowsePageContent() {
   return (
     <main className="container page-content">
       <div className="browse-search">
-        <div className="browse-search-input">
+          <div className="browse-search-input">
           <input
             ref={searchInputRef}
             type="text"
@@ -237,6 +238,7 @@ function BrowsePageContent() {
             onKeyDown={e => e.key === 'Enter' && search()}
             onFocus={() => { setShowHistory(true); setSearchHistory(getSearchHistory()) }}
           />
+          <SearchInlineButton onClick={search} disabled={!searchQuery.trim()} />
           {showHistory && searchHistory.length > 0 && !searchQuery && (
             <div className="search-history-dropdown">
               <div className="search-history-header">
@@ -273,7 +275,6 @@ function BrowsePageContent() {
             </div>
           )}
         </div>
-        <button onClick={search} className="btn-primary">Search</button>
         {searchQuery && (
           <button onClick={() => { setSearchQuery(''); setSearchResults([]) }} className="btn-secondary">
             Clear
@@ -303,7 +304,7 @@ function BrowsePageContent() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <div className="browse-tabs" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="browse-tabs" style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap' }}>
           {(['trending', 'movies', 'tv', 'new-movies', 'new-tv'] as Tab[]).map(t => (
             <button
               key={t}

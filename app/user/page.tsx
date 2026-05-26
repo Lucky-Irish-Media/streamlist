@@ -317,7 +317,7 @@ export default function UserPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '32px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '32px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}

@@ -383,7 +383,7 @@ export default function GroupPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
         <button
           onClick={() => setActiveTab('members')}
           style={{

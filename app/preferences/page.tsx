@@ -505,8 +505,8 @@ export default function PreferencesPage() {
                 border: '1px solid var(--border)',
                 borderRadius: '6px',
                 fontSize: '13px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
               }}>
                 {user.apiKey}
               </code>

@@ -26,6 +26,9 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 a {
@@ -103,6 +106,7 @@ input:focus, textarea:focus, select:focus {
 
 @media (max-width: 768px) {
   .page-content {
+    padding-top: 16px;
     padding-left: 16px;
     padding-right: 16px;
     padding-bottom: 100px;
@@ -125,6 +129,14 @@ input:focus, textarea:focus, select:focus {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
+}
+
+@media (max-width: 480px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 }
 
 .page-header h1 {
@@ -219,6 +231,7 @@ input:focus, textarea:focus, select:focus {
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border);
   padding: 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 200;
 }
 
@@ -732,18 +745,45 @@ input:focus, textarea:focus, select:focus {
   flex-wrap: wrap;
 }
 
-.browse-search > .btn-primary {
-  padding: 10px 20px;
-  white-space: nowrap;
-}
-
 .browse-search-input {
   flex: 1;
   min-width: 200px;
+  max-width: 400px;
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .browse-search-input input {
   width: 100%;
+  padding-right: 48px;
+}
+
+.search-inline-btn {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+
+.search-inline-btn:hover:not(:disabled) {
+  background-color: var(--border);
+}
+
+.search-inline-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 @media (max-width: 768px) {
@@ -754,11 +794,6 @@ input:focus, textarea:focus, select:focus {
   .browse-search-input {
     min-width: 100%;
   }
-}
-
-.browse-search-input {
-  flex: 1;
-  max-width: 400px;
 }
 
 @media (max-width: 480px) {
@@ -860,7 +895,8 @@ input:focus, textarea:focus, select:focus {
   font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 36px;
+  min-width: 44px;
+  min-height: 44px;
   color: var(--text-primary);
   display: flex;
   align-items: center;
