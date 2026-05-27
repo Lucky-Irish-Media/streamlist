@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Trash2, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 interface AccessCode {
   id: string
@@ -16,6 +17,7 @@ export default function AdminAccessCodesPage() {
   const [codes, setCodes] = useState<AccessCode[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const isMobile = useIsMobile()
   const [showModal, setShowModal] = useState(false)
   const [newCode, setNewCode] = useState('')
   const [expiresDays, setExpiresDays] = useState('')
@@ -98,8 +100,8 @@ export default function AdminAccessCodesPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 600 }}>Access Codes</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <h1 style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 600 }}>Access Codes</h1>
         <button
           onClick={() => setShowModal(true)}
           style={{
@@ -113,6 +115,7 @@ export default function AdminAccessCodesPage() {
             color: 'white',
             cursor: 'pointer',
             fontWeight: 500,
+            fontSize: isMobile ? '14px' : 'inherit',
           }}
         >
           <Plus size={18} />
@@ -123,75 +126,150 @@ export default function AdminAccessCodesPage() {
       {loading ? (
         <p>Loading codes...</p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Code</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Created</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Expires</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Status</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {codes.map(code => (
-                <tr key={code.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '14px' }}>
-                    {code.code}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    {code.createdAt ? new Date(code.createdAt).toLocaleDateString() : '-'}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    {code.expiresAt ? new Date(code.expiresAt).toLocaleDateString() : 'Never'}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <button
-                      onClick={() => handleToggleActive(code.id)}
-                      disabled={actionLoading === code.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        backgroundColor: code.isActive ? '#22c55e20' : '#ef444420',
-                        border: '1px solid',
-                        borderColor: code.isActive ? '#22c55e' : '#ef4444',
-                        borderRadius: '4px',
-                        color: code.isActive ? '#22c55e' : '#ef4444',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {code.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                      {code.isActive ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <button
-                      onClick={() => handleDelete(code.id)}
-                      disabled={actionLoading === code.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        backgroundColor: 'transparent',
-                        border: '1px solid #ef4444',
-                        borderRadius: '4px',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Trash2 size={14} />
-                      Delete
-                    </button>
-                  </td>
+        isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {codes.map(code => (
+              <div
+                key={code.id}
+                style={{
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div>
+                    <p style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 600, wordBreak: 'break-all' }}>
+                      {code.code}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(code.id)}
+                    disabled={actionLoading === code.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '6px 10px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid #ef4444',
+                      borderRadius: '4px',
+                      color: '#ef4444',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <Trash2 size={12} />
+                    Delete
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Created: </span>
+                    <span>{code.createdAt ? new Date(code.createdAt).toLocaleDateString() : '-'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Expires: </span>
+                    <span>{code.expiresAt ? new Date(code.expiresAt).toLocaleDateString() : 'Never'}</span>
+                  </div>
+                </div>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => handleToggleActive(code.id)}
+                    disabled={actionLoading === code.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      backgroundColor: code.isActive ? '#22c55e20' : '#ef444420',
+                      border: '1px solid',
+                      borderColor: code.isActive ? '#22c55e' : '#ef4444',
+                      borderRadius: '4px',
+                      color: code.isActive ? '#22c55e' : '#ef4444',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                    }}
+                  >
+                    {code.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                    {code.isActive ? 'Active' : 'Inactive'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Code</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Created</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Expires</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Status</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {codes.map(code => (
+                  <tr key={code.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '14px' }}>
+                      {code.code}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      {code.createdAt ? new Date(code.createdAt).toLocaleDateString() : '-'}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      {code.expiresAt ? new Date(code.expiresAt).toLocaleDateString() : 'Never'}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button
+                        onClick={() => handleToggleActive(code.id)}
+                        disabled={actionLoading === code.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          backgroundColor: code.isActive ? '#22c55e20' : '#ef444420',
+                          border: '1px solid',
+                          borderColor: code.isActive ? '#22c55e' : '#ef4444',
+                          borderRadius: '4px',
+                          color: code.isActive ? '#22c55e' : '#ef4444',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {code.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                        {code.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button
+                        onClick={() => handleDelete(code.id)}
+                        disabled={actionLoading === code.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          backgroundColor: 'transparent',
+                          border: '1px solid #ef4444',
+                          borderRadius: '4px',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
 
       {codes.length === 0 && !loading && (
@@ -214,8 +292,9 @@ export default function AdminAccessCodesPage() {
           <div style={{
             backgroundColor: 'var(--bg-secondary)',
             borderRadius: '8px',
-            padding: '24px',
-            width: '400px',
+            padding: isMobile ? '20px' : '24px',
+            width: isMobile ? '90%' : '400px',
+            maxWidth: '400px',
             border: '1px solid var(--border)',
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '24px' }}>Generate Access Code</h2>

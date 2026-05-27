@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Trash2, RefreshCw, Shield, ShieldOff } from 'lucide-react'
+import { Trash2, RefreshCw, Shield, ShieldOff, Key } from 'lucide-react'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 interface User {
   id: string
@@ -20,6 +21,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const isMobile = useIsMobile()
 
   const fetchUsers = async () => {
     try {
@@ -99,105 +101,215 @@ export default function AdminUsersPage() {
 
       {loading ? (
         <p>Loading users...</p>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Username</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Created</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Logins</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Last Login</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Sessions</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Watchlist</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>API Key</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Admin</th>
-                <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(user => (
-                <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px' }}>{user.username}</td>
-                  <td style={{ padding: '12px' }}>
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
-                  </td>
-                  <td style={{ padding: '12px' }}>{user.loginCount}</td>
-                  <td style={{ padding: '12px' }}>
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '-'}
-                  </td>
-                  <td style={{ padding: '12px' }}>{user.sessionCount}</td>
-                  <td style={{ padding: '12px' }}>{user.watchlistCount}</td>
-                  <td style={{ padding: '12px' }}>
-                    {user.hasApiKey ? (
-                      <button
-                        onClick={() => handleRegenerateApiKey(user.id)}
-                        disabled={actionLoading === user.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          backgroundColor: 'var(--bg-tertiary)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '4px',
-                          color: 'var(--text-primary)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <RefreshCw size={14} />
-                        Regenerate
-                      </button>
-                    ) : (
-                      <span style={{ color: 'var(--text-secondary)' }}>None</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px' }}>
+      ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {users.map(user => (
+              <div
+                key={user.id}
+                style={{
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: '16px' }}>{user.username}</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '2px' }}>
+                      Created: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={() => handleToggleAdmin(user.id, user.isAdmin)}
                       disabled={actionLoading === user.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
+                        gap: '4px',
+                        padding: '6px 10px',
                         backgroundColor: user.isAdmin ? 'var(--accent)' : 'var(--bg-tertiary)',
                         border: '1px solid var(--border)',
                         borderRadius: '4px',
                         color: user.isAdmin ? 'white' : 'var(--text-primary)',
                         cursor: 'pointer',
+                        fontSize: '12px',
                       }}
                     >
-                      {user.isAdmin ? <Shield size={14} /> : <ShieldOff size={14} />}
+                      {user.isAdmin ? <Shield size={12} /> : <ShieldOff size={12} />}
                       {user.isAdmin ? 'Admin' : 'User'}
                     </button>
-                  </td>
-                  <td style={{ padding: '12px' }}>
                     <button
                       onClick={() => handleDelete(user.id)}
                       disabled={actionLoading === user.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
+                        gap: '4px',
+                        padding: '6px 10px',
                         backgroundColor: 'transparent',
                         border: '1px solid #ef4444',
                         borderRadius: '4px',
                         color: '#ef4444',
                         cursor: 'pointer',
+                        fontSize: '12px',
                       }}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={12} />
                       Delete
                     </button>
-                  </td>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Logins: </span>
+                    <span>{user.loginCount}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Sessions: </span>
+                    <span>{user.sessionCount}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Watchlist: </span>
+                    <span>{user.watchlistCount}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Last Login: </span>
+                    <span>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '-'}</span>
+                  </div>
+                </div>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px' }}>
+                  {user.hasApiKey ? (
+                    <button
+                      onClick={() => handleRegenerateApiKey(user.id)}
+                      disabled={actionLoading === user.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 12px',
+                        backgroundColor: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      <RefreshCw size={14} />
+                      Regenerate API Key
+                    </button>
+                  ) : (
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px' }}>
+                      <Key size={14} />
+                      No API Key
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Username</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Created</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Logins</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Last Login</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Sessions</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Watchlist</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>API Key</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Admin</th>
+                  <th style={{ padding: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {users.map(user => (
+                  <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px' }}>{user.username}</td>
+                    <td style={{ padding: '12px' }}>
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                    </td>
+                    <td style={{ padding: '12px' }}>{user.loginCount}</td>
+                    <td style={{ padding: '12px' }}>
+                      {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '-'}
+                    </td>
+                    <td style={{ padding: '12px' }}>{user.sessionCount}</td>
+                    <td style={{ padding: '12px' }}>{user.watchlistCount}</td>
+                    <td style={{ padding: '12px' }}>
+                      {user.hasApiKey ? (
+                        <button
+                          onClick={() => handleRegenerateApiKey(user.id)}
+                          disabled={actionLoading === user.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            backgroundColor: 'var(--bg-tertiary)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '4px',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <RefreshCw size={14} />
+                          Regenerate
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)' }}>None</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button
+                        onClick={() => handleToggleAdmin(user.id, user.isAdmin)}
+                        disabled={actionLoading === user.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          backgroundColor: user.isAdmin ? 'var(--accent)' : 'var(--bg-tertiary)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '4px',
+                          color: user.isAdmin ? 'white' : 'var(--text-primary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {user.isAdmin ? <Shield size={14} /> : <ShieldOff size={14} />}
+                        {user.isAdmin ? 'Admin' : 'User'}
+                      </button>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button
+                        onClick={() => handleDelete(user.id)}
+                        disabled={actionLoading === user.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          backgroundColor: 'transparent',
+                          border: '1px solid #ef4444',
+                          borderRadius: '4px',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
 
       {users.length === 0 && !loading && (
         <p style={{ color: 'var(--text-secondary)', marginTop: '16px' }}>No users found</p>

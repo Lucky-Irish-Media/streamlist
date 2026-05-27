@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 interface Stats {
   totalUsers: number
@@ -24,6 +25,7 @@ export default function AdminDashboard() {
   const [loginStats, setLoginStats] = useState<LoginStats | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     const loadStats = async () => {
@@ -79,43 +81,43 @@ export default function AdminDashboard() {
         <p>Loading stats...</p>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '140px' : '200px'}, 1fr))`, gap: isMobile ? '12px' : '24px', marginBottom: isMobile ? '20px' : '32px' }}>
             {statCards.map(card => (
               <div
                 key={card.label}
                 style={{
                   backgroundColor: 'var(--bg-secondary)',
                   borderRadius: '8px',
-                  padding: '24px',
+                  padding: isMobile ? '16px' : '24px',
                   border: '1px solid var(--border)',
                 }}
               >
                 <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '8px' }}>
                   {card.label}
                 </p>
-                <p style={{ fontSize: '32px', fontWeight: 600, color: card.color }}>
+                <p style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 600, color: card.color }}>
                   {card.value}
                 </p>
               </div>
             ))}
           </div>
 
-          <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '16px' }}>Login Activity (30 days)</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '24px' }}>
+          <h2 style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: 600, marginBottom: isMobile ? '12px' : '16px' }}>Login Activity (30 days)</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '140px' : '200px'}, 1fr))`, gap: isMobile ? '12px' : '24px' }}>
             {loginCards.map(card => (
               <div
                 key={card.label}
                 style={{
                   backgroundColor: 'var(--bg-secondary)',
                   borderRadius: '8px',
-                  padding: '24px',
+                  padding: isMobile ? '16px' : '24px',
                   border: '1px solid var(--border)',
                 }}
               >
                 <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '8px' }}>
                   {card.label}
                 </p>
-                <p style={{ fontSize: '32px', fontWeight: 600, color: card.color }}>
+                <p style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 600, color: card.color }}>
                   {card.value}
                 </p>
               </div>
