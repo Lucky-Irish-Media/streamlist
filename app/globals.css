@@ -584,6 +584,7 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
   margin-bottom: 16px;
 }
 
@@ -852,10 +853,17 @@ input:focus, textarea:focus, select:focus {
 
 .card-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-top: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
+}
+
+.card-actions .icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px 8px;
+  flex: 0 1 auto;
 }
 
 .sort-select {
@@ -908,8 +916,28 @@ input:focus, textarea:focus, select:focus {
   transform: scale(1.05);
 }
 
+.icon-btn--danger {
+  border-color: var(--danger, #e74c3c);
+  color: var(--danger, #e74c3c);
+}
+
+.icon-btn--danger:hover {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: var(--danger, #e74c3c);
+  color: var(--danger, #e74c3c);
+}
+
 .media-modal {
   max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-content {

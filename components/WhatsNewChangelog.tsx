@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.2.0'
+const CURRENT_VERSION = '1.3.0'
 
 const CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: '2026-05-27',
+    items: [
+      'Modal header buttons now stay visible at the top when scrolling through content',
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-05-26',

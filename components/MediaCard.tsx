@@ -466,11 +466,6 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
     }
   }
 
-  const handleViewDetails = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    openModal()
-  }
-
   const dismissRecommendation = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
@@ -499,7 +494,7 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
   return (
     <>
       <div className="card">
-        <div className="card-image-wrapper">
+        <div className="card-image-wrapper" onClick={() => openModal()} style={{ cursor: 'pointer' }}>
           <img 
             src={imageSrc} 
             alt={title} 
@@ -545,36 +540,21 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
             >
               {inWatchlist ? <Trash2 size={16} /> : <Plus size={16} />}
             </button>
-            <button 
-              onClick={handleViewDetails} 
-              className="icon-btn" 
-              title="View Details"
-            >
-              <FileText size={16} />
-            </button>
+            {onDismiss && (
+              <button 
+                onClick={dismissRecommendation}
+                className="icon-btn icon-btn--danger" 
+                title="Dismiss"
+              >
+                <X size={16} />
+              </button>
+            )}
             {hasNote && (
               <span className="note-indicator" title="Has note">
                 <FileText size={12} />
               </span>
             )}
           </div>
-          <button
-            onClick={dismissRecommendation}
-            style={{
-              width: '100%',
-              padding: '12px 0',
-              marginTop: '6px',
-              background: 'none',
-              border: '1px solid var(--danger, #e74c3c)',
-              color: 'var(--danger, #e74c3c)',
-              borderRadius: '4px',
-              fontSize: '14px',
-              cursor: 'pointer',
-              minHeight: '44px',
-            }}
-          >
-            Dismiss
-          </button>
         </div>
       </div>
 
@@ -643,6 +623,7 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                 </button>
               </div>
             </div>
+            <div className="modal-body">
             {loadingDetails ? (
               <div className="loading">Loading details...</div>
             ) : details ? (
@@ -841,6 +822,7 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
             ) : (
               <div>Failed to load details</div>
             )}
+            </div>
           </div>
         </div>
       )}
