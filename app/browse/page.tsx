@@ -280,27 +280,29 @@ function BrowsePageContent() {
             Clear
           </button>
         )}
-        {hasStreamingServices && !searchQuery && (
-          <button
-            onClick={() => setStreamable(s => !s)}
-            className={streamable ? 'btn-primary streamable-toggle active' : 'btn-secondary streamable-toggle'}
-            title="Only show content available on your streaming services"
-          >
-            <Monitor size={16} />
-            <span>Streamable Now</span>
-          </button>
-        )}
-        {!searchQuery && items.length > 0 && (
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as SortOption)}
-            className="sort-select"
-          >
-            <option value="popularity">Popularity</option>
-            <option value="rating">Rating</option>
-            <option value="release-date">Release Date</option>
-          </select>
-        )}
+        <div className="browse-controls-row">
+          {hasStreamingServices && !searchQuery && (
+            <button
+              onClick={() => setStreamable(s => !s)}
+              className={streamable ? 'btn-primary streamable-toggle active' : 'btn-secondary streamable-toggle'}
+              title="Only show content available on your streaming services"
+            >
+              <Monitor size={16} />
+              <span>Streamable Now</span>
+            </button>
+          )}
+          {!searchQuery && items.length > 0 && (
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as SortOption)}
+              className="sort-select"
+            >
+              <option value="popularity">Popularity</option>
+              <option value="rating">Rating</option>
+              <option value="release-date">Release Date</option>
+            </select>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>

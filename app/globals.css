@@ -895,6 +895,17 @@ input:focus, textarea:focus, select:focus {
   width: auto;
 }
 
+.browse-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.browse-controls-row .sort-select {
+  margin-left: 0;
+}
+
 .streamable-toggle {
   display: flex;
   align-items: center;
