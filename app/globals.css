@@ -288,6 +288,10 @@ input:focus, textarea:focus, select:focus {
   .install-btn {
     display: flex;
   }
+
+  .mobile-only {
+    display: flex;
+  }
   
   .mobile-nav {
     display: block;
@@ -300,6 +304,10 @@ input:focus, textarea:focus, select:focus {
   main.container {
     padding-bottom: 80px;
   }
+}
+
+.mobile-only {
+  display: none;
 }
 
 .card {

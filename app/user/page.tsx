@@ -314,6 +314,26 @@ export default function UserPage() {
             <Edit2 size={16} />
             Edit
           </Link>
+          <button
+            onClick={handleLogout}
+            className="mobile-only"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              backgroundColor: 'transparent',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
         </div>
       </div>
 
