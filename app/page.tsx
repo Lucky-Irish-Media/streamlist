@@ -48,6 +48,7 @@ function HomeContent() {
   const [sortBy, setSortBy] = useState<'popularity' | 'rating' | 'release-date'>('popularity')
   const [showBanner, setShowBanner] = useState(false)
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
+  const [refreshing, setRefreshing] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -86,10 +87,14 @@ function HomeContent() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const fetchRecommendations = useCallback((refresh?: boolean) => {
+    return fetch(`/api/recommendations${refresh ? '?refresh=1' : ''}`)
+      .then(res => res.json() as Promise<RecommendationsData>)
+  }, [])
+
   useEffect(() => {
     if (user) {
-      fetch('/api/recommendations')
-        .then(res => res.json() as Promise<RecommendationsData>)
+      fetchRecommendations()
         .then(data => {
           setData(data)
         })
@@ -97,7 +102,19 @@ function HomeContent() {
     } else {
       setLoading(false)
     }
-  }, [user])
+  }, [user, fetchRecommendations])
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true)
+    fetchRecommendations(true)
+      .then(data => {
+        setData(data)
+      })
+      .catch(() => {
+        // fetch error — keep existing data
+      })
+      .finally(() => setRefreshing(false))
+  }, [fetchRecommendations])
 
   if (!user) {
     return (
@@ -219,6 +236,15 @@ return (
       <section className="section">
         <div className="section-header">
           <h2 className="section-title">Recommendations</h2>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="refresh-btn"
+            aria-label="Refresh recommendations"
+            title="Refresh recommendations"
+          >
+            <span className={`refresh-icon${refreshing ? ' spinning' : ''}`}>↻</span>
+          </button>
         </div>
         {sortedForYou.length === 0 ? (
           <p className="empty-message">
@@ -227,7 +253,7 @@ return (
               : 'No recommendations available yet. Like some movies or shows to help us find content for you.'}
           </p>
         ) : (
-          <div className="grid grid-5">
+          <div className={`grid grid-5${refreshing ? ' grid-refreshing' : ''}`}>
             {sortedForYou.slice(0, 20).map((item: ScoredMediaItem) => (
               <MediaCard key={item.id} item={item} onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))} />
             ))}

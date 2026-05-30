@@ -43,6 +43,10 @@ interface ScoredItem {
   matchReasons: string[]
 }
 
+function randomPage() {
+  return String(Math.floor(Math.random() * 5) + 1)
+}
+
 async function buildHybridRecommendations(
   likes: { tmdbId: number; mediaType: string; title: string }[],
   genres: number[],
@@ -52,6 +56,7 @@ async function buildHybridRecommendations(
   dismissed: { tmdbId: number; mediaType: string }[],
   countries: string[],
   tmdb: TMDBConfig,
+  refresh?: boolean,
 ): Promise<ScoredItem[]> {
   if (likes.length === 0) return []
 
@@ -213,7 +218,7 @@ async function buildHybridRecommendations(
             vote_average_gte: '6.5',
             vote_count_gte: '100',
             sort_by: 'vote_average.desc',
-            page: '1',
+            page: refresh ? randomPage() : '1',
             with_watch_providers: providerId,
             watch_region: region,
           }
@@ -253,7 +258,7 @@ async function buildHybridRecommendations(
             vote_average_gte: '6.0',
             vote_count_gte: '50',
             sort_by: 'popularity.desc',
-            page: '1',
+            page: refresh ? randomPage() : '1',
             with_watch_providers: providerId,
             watch_region: region,
           }
@@ -288,6 +293,7 @@ export async function GET(req: NextRequest) {
   const { env } = getRequestContext()
   const dbEnv = { DB: (env as any)?.DB }
   const tmdb = getTMDBConfig(env as any)
+  const refresh = req.nextUrl.searchParams.get('refresh') === '1'
   let sessionId = parseAuthCookie(req.headers.get('cookie'))
   if (!sessionId) {
     sessionId = req.headers.get('x-session-id')
@@ -354,6 +360,7 @@ export async function GET(req: NextRequest) {
     userPreferences.dismissed,
     userPreferences.countries,
     tmdb,
+    refresh,
   )
 
   // Service-based recommendations (for per-service browsing)
