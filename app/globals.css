@@ -222,6 +222,24 @@ input:focus, textarea:focus, select:focus {
   padding: 4px;
 }
 
+.install-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.install-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
 .mobile-nav {
   display: none;
   position: fixed;
@@ -265,6 +283,10 @@ input:focus, textarea:focus, select:focus {
   
   .mobile-menu-btn {
     display: block;
+  }
+
+  .install-btn {
+    display: flex;
   }
   
   .mobile-nav {

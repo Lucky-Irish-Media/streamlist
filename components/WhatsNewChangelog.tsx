@@ -2,9 +2,17 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.3.0'
+const CURRENT_VERSION = '1.4.0'
 
 const CHANGELOG = [
+  {
+    version: '1.4.0',
+    date: '2026-05-30',
+    items: [
+      'StreamList is now installable as a PWA with app icons and manifest',
+      'Install button in header on mobile for Add to Home Screen',
+    ],
+  },
   {
     version: '1.3.0',
     date: '2026-05-27',

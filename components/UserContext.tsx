@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, List, Users, Settings, HelpCircle } from 'lucide-react'
 import WhatsNewChangelog from '@/components/WhatsNewChangelog'
+import InstallButton from '@/components/InstallButton'
 
 interface User {
   id: string
@@ -469,6 +470,7 @@ export function Header() {
         }}>Login</Link>
             )}
           </nav>
+          <InstallButton />
         </div>
       </div>
       {user && (
