@@ -5,9 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
+import MediaTable from '@/components/MediaTable'
+import ViewToggle from '@/components/ViewToggle'
 import SearchInlineButton from '@/components/SearchInlineButton'
 import { SkeletonGrid } from '@/components/Skeleton'
 import type { RecommendationsData, ScoredMediaItem, MediaItem } from '@/types/media'
+import type { ViewMode } from '@/components/ViewToggle'
 
 const SEARCH_HISTORY_KEY = 'streamlist_search_history'
 const MAX_SEARCH_HISTORY = 5
@@ -46,6 +49,19 @@ function HomeContent() {
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [sortBy, setSortBy] = useState<'popularity' | 'rating' | 'release-date'>('popularity')
+  const [viewMode, setViewMode] = useState<ViewMode>('card')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('streamlist_view_mode')
+      if (stored === 'card' || stored === 'table') setViewMode(stored)
+    }
+  }, [])
+
+  const handleViewToggle = (mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem('streamlist_view_mode', mode)
+  }
   const [showBanner, setShowBanner] = useState(false)
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -222,6 +238,7 @@ return (
             </div>
           )}
         </div>
+        <ViewToggle viewMode={viewMode} onToggle={handleViewToggle} />
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as 'popularity' | 'rating' | 'release-date')}
@@ -252,6 +269,13 @@ return (
               ? 'Like some movies or shows to get personalized recommendations.'
               : 'No recommendations available yet. Like some movies or shows to help us find content for you.'}
           </p>
+        ) : viewMode === 'table' ? (
+          <div className={refreshing ? 'grid-refreshing' : ''}>
+            <MediaTable
+              items={sortedForYou.slice(0, 20)}
+              onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))}
+            />
+          </div>
         ) : (
           <div className={`grid grid-5${refreshing ? ' grid-refreshing' : ''}`}>
             {sortedForYou.slice(0, 20).map((item: ScoredMediaItem) => (

@@ -2,9 +2,17 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.4.0'
+const CURRENT_VERSION = '1.5.0'
 
 const CHANGELOG = [
+  {
+    version: '1.5.0',
+    date: '2026-06-02',
+    items: [
+      'Toggle between card grid and table view on Home, Browse, and Watchlist pages',
+      'Sortable table columns with poster thumbnails, rating, year, and certification',
+    ],
+  },
   {
     version: '1.4.0',
     date: '2026-05-30',

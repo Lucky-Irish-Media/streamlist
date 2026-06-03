@@ -4,10 +4,13 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
+import MediaTable from '@/components/MediaTable'
+import ViewToggle from '@/components/ViewToggle'
 import EmptyState from '@/components/EmptyState'
 import LoadingImage from '@/components/LoadingImage'
 import { Lock, ListPlus } from 'lucide-react'
 import type { WatchlistItem, MediaItem } from '@/types/media'
+import type { ViewMode } from '@/components/ViewToggle'
 
 type SortOption = 'date-added' | 'rating' | 'title' | 'release-date'
 type FilterOption = 'to-watch' | 'all' | 'watched'
@@ -20,6 +23,19 @@ export default function WatchlistPage() {
   const [items, setItems] = useState<MediaItem[]>([])
   const [sortBy, setSortBy] = useState<SortOption>('date-added')
   const [filterBy, setFilterBy] = useState<FilterOption>('to-watch')
+  const [viewMode, setViewMode] = useState<ViewMode>('card')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('streamlist_view_mode')
+      if (stored === 'card' || stored === 'table') setViewMode(stored)
+    }
+  }, [])
+
+  const handleViewToggle = (mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem('streamlist_view_mode', mode)
+  }
 
   useEffect(() => {
     Promise.all([
@@ -117,16 +133,19 @@ export default function WatchlistPage() {
       <div className="page-header">
         <h1>Your Watchlist</h1>
         {items.length > 0 && (
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as SortOption)}
-            className="sort-select"
-          >
-            <option value="date-added">Date Added</option>
-            <option value="rating">Rating</option>
-            <option value="title">Title</option>
-            <option value="release-date">Release Date</option>
-          </select>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <ViewToggle viewMode={viewMode} onToggle={handleViewToggle} />
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as SortOption)}
+              className="sort-select"
+            >
+              <option value="date-added">Date Added</option>
+              <option value="rating">Rating</option>
+              <option value="title">Title</option>
+              <option value="release-date">Release Date</option>
+            </select>
+          </div>
         )}
       </div>
 
@@ -163,12 +182,14 @@ export default function WatchlistPage() {
           actionText="Start Browsing"
           actionHref="/browse"
         />
+      ) : viewMode === 'table' ? (
+        <MediaTable items={sortedItems.filter(Boolean)} />
       ) : (
         <div className="grid grid-5">
           {sortedItems.filter(Boolean).map((item: MediaItem) => (
-            <MediaCard 
-              key={item.id} 
-              item={item} 
+            <MediaCard
+              key={item.id}
+              item={item}
             />
           ))}
         </div>

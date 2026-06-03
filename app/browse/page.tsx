@@ -3,12 +3,15 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import MediaCard from '@/components/MediaCard'
+import MediaTable from '@/components/MediaTable'
+import ViewToggle from '@/components/ViewToggle'
 import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
 import { useUser } from '@/components/UserContext'
 import { Search, Monitor } from 'lucide-react'
 import SearchInlineButton from '@/components/SearchInlineButton'
 import type { MediaItem } from '@/types/media'
+import type { ViewMode } from '@/components/ViewToggle'
 
 type Tab = 'trending' | 'movies' | 'tv' | 'new-movies' | 'new-tv'
 type SortOption = 'popularity' | 'rating' | 'release-date'
@@ -57,6 +60,19 @@ function BrowsePageContent() {
   const [tab, setTab] = useState<Tab>(initialTab || 'trending')
   const [sortBy, setSortBy] = useState<SortOption>('popularity')
   const [streamable, setStreamable] = useState(true)
+  const [viewMode, setViewMode] = useState<ViewMode>('card')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('streamlist_view_mode')
+      if (stored === 'card' || stored === 'table') setViewMode(stored)
+    }
+  }, [])
+
+  const handleViewToggle = (mode: ViewMode) => {
+    setViewMode(mode)
+    localStorage.setItem('streamlist_view_mode', mode)
+  }
   const [items, setItems] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -292,15 +308,18 @@ function BrowsePageContent() {
             </button>
           )}
           {!searchQuery && items.length > 0 && (
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as SortOption)}
-              className="sort-select"
-            >
-              <option value="popularity">Popularity</option>
-              <option value="rating">Rating</option>
-              <option value="release-date">Release Date</option>
-            </select>
+            <>
+              <ViewToggle viewMode={viewMode} onToggle={handleViewToggle} />
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as SortOption)}
+                className="sort-select"
+              >
+                <option value="popularity">Popularity</option>
+                <option value="rating">Rating</option>
+                <option value="release-date">Release Date</option>
+              </select>
+            </>
           )}
         </div>
       </div>
@@ -323,11 +342,15 @@ function BrowsePageContent() {
         <SkeletonGrid count={10} />
       ) : (
         <>
-          <div className="grid grid-5">
-            {displayItems.map((item: MediaItem) => (
-              <MediaCard key={item.id} item={item} onDismiss={handleDismiss} />
-            ))}
-          </div>
+          {viewMode === 'table' ? (
+            <MediaTable items={displayItems} onDismiss={handleDismiss} />
+          ) : (
+            <div className="grid grid-5">
+              {displayItems.map((item: MediaItem) => (
+                <MediaCard key={item.id} item={item} onDismiss={handleDismiss} />
+              ))}
+            </div>
+          )}
 
           {!searchQuery && hasMore && !loadingMore && (
             <div style={{ textAlign: 'center', marginTop: '32px' }}>
