@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@/components/UserContext'
+import { useIsMobile } from '@/lib/useIsMobile'
 import { Check, Eye, Heart, Plus, Trash2, Star, X } from 'lucide-react'
 import type { MediaItem } from '@/types/media'
 
@@ -10,7 +11,7 @@ interface MediaTableProps {
   onDismiss?: (id: number) => void
 }
 
-function MediaTableRow({ item, onDismiss }: { item: MediaItem; onDismiss?: (id: number) => void }) {
+function MediaTableRow({ item, onDismiss, isMobile }: { item: MediaItem; onDismiss?: (id: number) => void; isMobile?: boolean }) {
   const { user, refreshUser } = useUser()
   const [inWatchlist, setInWatchlist] = useState(false)
   const [loadingWatchlist, setLoadingWatchlist] = useState(true)
@@ -132,6 +133,67 @@ function MediaTableRow({ item, onDismiss }: { item: MediaItem; onDismiss?: (id: 
     } catch (err) { console.error('Failed to dismiss:', err) }
   }
 
+  if (isMobile) {
+    return (
+      <div className={`mobile-media-card${isWatched ? ' watched' : ''}`}>
+        <div className="mobile-media-card-main">
+          <img
+            src={imageSrc}
+            alt={title}
+            className="table-thumb"
+            onError={() => setImageError(true)}
+          />
+          <div className="mobile-media-card-info">
+            <div className="mobile-media-card-title">{title}</div>
+            <div className="mobile-media-card-meta">
+              <span className="badge">{mediaType}</span>
+              <span className="rating">
+                <Star size={12} fill="currentColor" /> {item.vote_average?.toFixed(1)}
+              </span>
+              <span className="mobile-media-card-year">{year || '-'}</span>
+              {certification ? (
+                <span className="certification">{certification}</span>
+              ) : (
+                <span className="certification">NA</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mobile-media-card-actions">
+          <button
+            onClick={toggleWatched}
+            className="icon-btn"
+            title={isWatched ? 'Mark as Unwatched' : 'Mark as Watched'}
+            disabled={loadingWatched}
+          >
+            {isWatched ? <Check size={14} /> : <Eye size={14} />}
+          </button>
+          <button
+            onClick={toggleLike}
+            className="icon-btn"
+            title={isLiked ? 'Unlike' : 'Add to Liked'}
+            disabled={loadingLiked}
+          >
+            <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            onClick={toggleWatchlist}
+            className="icon-btn"
+            title={inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+            disabled={loadingWatchlist}
+          >
+            {inWatchlist ? <Trash2 size={14} /> : <Plus size={14} />}
+          </button>
+          {onDismiss && (
+            <button onClick={dismiss} className="icon-btn icon-btn--danger" title="Dismiss">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <tr className={`media-table-row${isWatched ? ' watched' : ''}`}>
       <td className="table-cell-title">
@@ -197,6 +259,18 @@ function MediaTableRow({ item, onDismiss }: { item: MediaItem; onDismiss?: (id: 
 }
 
 export default function MediaTable({ items, onDismiss }: MediaTableProps) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return (
+      <div className="mobile-media-list">
+        {items.map(item => (
+          <MediaTableRow key={item.id} item={item} onDismiss={onDismiss} isMobile />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="table-wrapper">
       <table className="media-table">
