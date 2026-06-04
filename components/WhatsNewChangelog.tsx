@@ -2,9 +2,19 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.5.0'
+const CURRENT_VERSION = '1.6.0'
 
 const CHANGELOG = [
+  {
+    version: '1.6.0',
+    date: '2026-06-04',
+    items: [
+      'Dedicated What\'s New page with recent git commits and links to GitHub',
+      'Sparkle icon in header with unread indicator for new changes',
+      'What\'s New link added to mobile navigation',
+      'Logout button removed from desktop nav (available in Profile)',
+    ],
+  },
   {
     version: '1.5.0',
     date: '2026-06-02',
