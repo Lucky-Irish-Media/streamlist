@@ -652,6 +652,16 @@ async function handleGetUserActivity(userId: string, limit = 50, offset = 0): Pr
   const ctx = getContext()
   const database = getDb(ctx.env)
 
+  const caller = await database
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, ctx.userId))
+    .get()
+
+  if (!caller?.isAdmin) {
+    return { content: [{ type: 'text', text: JSON.stringify({ error: 'Admin access required' }) }] }
+  }
+
   const user = await database
     .select()
     .from(schema.users)
@@ -689,6 +699,16 @@ async function handleGetFailedLoginAttempts(startDate?: string, endDate?: string
   const ctx = getContext()
   const database = getDb(ctx.env)
 
+  const caller = await database
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, ctx.userId))
+    .get()
+
+  if (!caller?.isAdmin) {
+    return { content: [{ type: 'text', text: JSON.stringify({ error: 'Admin access required' }) }] }
+  }
+
   const start = startDate ? new Date(startDate) : undefined
   const end = endDate ? new Date(endDate) : undefined
 
@@ -709,6 +729,16 @@ async function handleGetFailedLoginAttempts(startDate?: string, endDate?: string
 async function handleGetLoginStats(days = 30): Promise<{ content: Array<{ type: string; text: string }> }> {
   const ctx = getContext()
   const database = getDb(ctx.env)
+
+  const caller = await database
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, ctx.userId))
+    .get()
+
+  if (!caller?.isAdmin) {
+    return { content: [{ type: 'text', text: JSON.stringify({ error: 'Admin access required' }) }] }
+  }
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 

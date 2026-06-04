@@ -4,6 +4,7 @@ import { getUserFromSession, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq, desc, count } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { logAuditEvent } from '@/lib/audit'
 
 export const runtime = 'edge'
 
@@ -93,6 +94,8 @@ export async function DELETE(req: NextRequest) {
   await db.delete(schema.userGroupMembers).where(eq(schema.userGroupMembers.userId, targetUserId)).run()
   await db.delete(schema.users).where(eq(schema.users.id, targetUserId)).run()
 
+  await logAuditEvent(dbEnv, user.id, 'user_deleted', 'user', targetUserId)
+
   return NextResponse.json({ success: true })
 }
 
@@ -127,11 +130,13 @@ export async function PUT(req: NextRequest) {
     if (action === 'regenerateApiKey') {
       const newApiKey = nanoid(32)
       await db.update(schema.users).set({ apiKey: newApiKey }).where(eq(schema.users.id, userId)).run()
+      await logAuditEvent(dbEnv, user.id, 'api_key_regenerated', 'user', userId)
       return NextResponse.json({ apiKey: newApiKey })
     }
 
     if (action === 'setAdmin') {
       await db.update(schema.users).set({ isAdmin: Boolean(value) }).where(eq(schema.users.id, userId)).run()
+      await logAuditEvent(dbEnv, user.id, `admin_${value ? 'promoted' : 'demoted'}`, 'user', userId)
       return NextResponse.json({ success: true })
     }
 

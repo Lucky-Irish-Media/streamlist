@@ -4,6 +4,7 @@ import { getUserFromSession, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { logAuditEvent } from '@/lib/audit'
 
 export const runtime = 'edge'
 
@@ -73,6 +74,8 @@ export async function POST(req: NextRequest) {
       expiresAt,
     })
 
+    await logAuditEvent(dbEnv, user.id, 'access_code_created', 'access_code', id, `Code: ${newCode}`)
+
     return NextResponse.json({ 
       id,
       code: newCode,
@@ -118,6 +121,7 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ error: 'Code not found' }, { status: 404 })
       }
       await db.update(schema.accessCodes).set({ isActive: !existing.isActive }).where(eq(schema.accessCodes.id, id)).run()
+      await logAuditEvent(dbEnv, user.id, 'access_code_toggled', 'access_code', id, `Active: ${!existing.isActive}`)
       return NextResponse.json({ success: true, isActive: !existing.isActive })
     }
 
@@ -154,6 +158,8 @@ export async function DELETE(req: NextRequest) {
 
   const db = getDB(dbEnv)
   await db.delete(schema.accessCodes).where(eq(schema.accessCodes.id, id)).run()
+
+  await logAuditEvent(dbEnv, user.id, 'access_code_deleted', 'access_code', id)
 
   return NextResponse.json({ success: true })
 }

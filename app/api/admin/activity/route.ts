@@ -3,7 +3,6 @@ import { getRequestContext } from '@cloudflare/next-on-pages'
 import { getUserFromSession, parseAuthCookie, getUserSessions, getLoginAttempts, getLoginStats } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq, and, gt, asc } from 'drizzle-orm'
-import { queryLoginStats } from '@/lib/analytics'
 
 export const runtime = 'edge'
 
@@ -39,7 +38,7 @@ export async function GET(req: NextRequest) {
   try {
     if (type === 'stats') {
       const days = parseInt(searchParams.get('days') || '30')
-      const stats = await queryLoginStats(env, days)
+      const stats = await getLoginStats(dbEnv, days)
       return NextResponse.json(stats)
     }
 

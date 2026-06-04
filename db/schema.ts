@@ -133,6 +133,16 @@ export const dismissedRecommendations = sqliteTable('dismissed_recommendations',
   dismissedAt: integer('dismissed_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 
+export const auditLog = sqliteTable('audit_log', {
+  id: text('id').primaryKey(),
+  actorId: text('actor_id').notNull().references(() => users.id),
+  action: text('action').notNull(),
+  targetType: text('target_type'),
+  targetId: text('target_id'),
+  details: text('details'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})
+
 export const episodesWatched = sqliteTable('episodes_watched', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().references(() => users.id),
