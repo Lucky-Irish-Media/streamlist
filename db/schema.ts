@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -28,7 +28,9 @@ export const userLikes = sqliteTable('user_likes', {
   tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
   mediaType: text('media_type').notNull(),
   title: text('title').notNull(),
-})
+}, (table) => ({
+  userIdIdx: index('idx_likes_user_id').on(table.userId),
+}))
 
 export const watchlist = sqliteTable('watchlist', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
@@ -36,7 +38,10 @@ export const watchlist = sqliteTable('watchlist', {
   tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
   mediaType: text('media_type').notNull(),
   addedAt: integer('added_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-})
+}, (table) => ({
+  userIdIdx: index('idx_watchlist_user_id').on(table.userId),
+  userTmdbIdx: index('idx_watchlist_user_tmdb').on(table.userId, table.tmdbId),
+}))
 
 export const watched = sqliteTable('watched', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
@@ -46,7 +51,10 @@ export const watched = sqliteTable('watched', {
   title: text('title').notNull(),
   seasonWatched: integer('season_watched'),
   watchedAt: integer('watched_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-})
+}, (table) => ({
+  userIdIdx: index('idx_watched_user_id').on(table.userId),
+  userTmdbIdx: index('idx_watched_user_tmdb').on(table.userId, table.tmdbId),
+}))
 
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
@@ -55,7 +63,9 @@ export const sessions = sqliteTable('sessions', {
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   endedAt: integer('ended_at', { mode: 'timestamp' }),
-})
+}, (table) => ({
+  userIdIdx: index('idx_sessions_user_id').on(table.userId),
+}))
 
 export const loginAttempts = sqliteTable('login_attempts', {
   id: text('id').primaryKey(),
