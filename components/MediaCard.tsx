@@ -135,6 +135,7 @@ export default function MediaCard({ item, onDismiss }: MediaCardProps) {
   }, [currentMovieId, currentMediaType])
 
   useEffect(() => {
+    if ((item as any).certification) return
     const countries = user?.countries?.join(',') || 'US'
     fetch(`/api/media?id=${item.id}&type=${mediaType}&countries=${countries}`)
       .then(res => res.json() as Promise<MediaItem & { certification?: string | null; seasons?: { season_number: number; name: string }[] }>)
@@ -144,11 +145,6 @@ export default function MediaCard({ item, onDismiss }: MediaCardProps) {
         }
         if (data.seasons) {
           setSeasons(data.seasons)
-          if (mediaType === 'tv') {
-            data.seasons.forEach((season) => {
-              fetchSeasonEpisodes(season.season_number)
-            })
-          }
         }
       })
       .catch(() => {})
@@ -229,8 +225,11 @@ export default function MediaCard({ item, onDismiss }: MediaCardProps) {
     try {
       const countries = user?.countries?.join(',') || 'US'
       const res = await fetch(`/api/media?id=${targetId}&type=${targetMediaType}&countries=${countries}`)
-      const data = await res.json() as MediaItem
+      const data = await res.json() as MediaItem & { seasons?: { season_number: number; name: string }[] }
       setDetails(data)
+      if (data.seasons) {
+        setSeasons(data.seasons)
+      }
     } catch (err) {
       console.error('Failed to fetch details:', err)
     } finally {
@@ -486,7 +485,7 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
 
   const title = item.title || item.name || ''
   const releaseDate = item.release_date || item.first_air_date || ''
-  const certification = (details as any)?.certification || (item as any).certification
+  const certification = (item as any).certification
 
   const placeholderImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect fill="%23222" width="200" height="300"/><text fill="%23666" font-family="system-ui" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em">No Image</text></svg>')
   const imageSrc = (item.image && !imageError) ? item.image : placeholderImage

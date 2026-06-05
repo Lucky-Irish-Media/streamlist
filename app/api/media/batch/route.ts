@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getMovieDetails, getTVDetails, getImageUrl, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieReleaseDates, getTVContentRatings, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
 
 interface BatchItem {
   tmdbId: number
@@ -18,6 +18,28 @@ interface BatchResult {
   release_date?: string
   first_air_date?: string
   genres: { id: number; name: string }[]
+  certification: string | null
+}
+
+async function getCertification(mediaType: string, id: number, tmdb: TMDBConfig): Promise<string | null> {
+  try {
+    if (mediaType === 'movie') {
+      const releaseDates = await getMovieReleaseDates(id, tmdb)
+      const usData = releaseDates.results.find(r => r.iso_3166_1 === 'US')
+      if (usData?.release_dates) {
+        for (const rd of usData.release_dates) {
+          if (rd.certification) return rd.certification
+        }
+      }
+      return null
+    } else {
+      const contentRatings = await getTVContentRatings(id, tmdb)
+      const usData = contentRatings.results.find(r => r.iso_3166_1 === 'US')
+      return usData?.rating || null
+    }
+  } catch {
+    return null
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -42,34 +64,22 @@ export async function GET(req: NextRequest) {
     const results = await Promise.all(
       items.map(async ({ tmdbId, mediaType }) => {
         try {
-          if (mediaType === 'tv') {
-            const details = await getTVDetails(tmdbId, tmdb)
-            return {
-              id: details.id,
-              title: details.title,
-              name: details.name,
-              media_type: 'tv' as const,
-              image: getImageUrl(details.poster_path, 'w185'),
-              poster_path: details.poster_path,
-              vote_average: details.vote_average,
-              release_date: details.release_date,
-              first_air_date: details.first_air_date,
-              genres: details.genres || [],
-            }
-          } else {
-            const details = await getMovieDetails(tmdbId, tmdb)
-            return {
-              id: details.id,
-              title: details.title,
-              name: details.name,
-              media_type: 'movie' as const,
-              image: getImageUrl(details.poster_path, 'w185'),
-              poster_path: details.poster_path,
-              vote_average: details.vote_average,
-              release_date: details.release_date,
-              first_air_date: details.first_air_date,
-              genres: details.genres || [],
-            }
+          const [details, certification] = await Promise.all([
+            mediaType === 'tv' ? getTVDetails(tmdbId, tmdb) : getMovieDetails(tmdbId, tmdb),
+            getCertification(mediaType, tmdbId, tmdb),
+          ])
+          return {
+            id: details.id,
+            title: details.title,
+            name: details.name,
+            media_type: mediaType as 'movie' | 'tv',
+            image: getImageUrl(details.poster_path, 'w185'),
+            poster_path: details.poster_path,
+            vote_average: details.vote_average,
+            release_date: details.release_date,
+            first_air_date: details.first_air_date,
+            genres: details.genres || [],
+            certification,
           }
         } catch {
           return null
