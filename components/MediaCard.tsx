@@ -39,20 +39,23 @@ interface CollectionDetails {
 interface MediaCardProps {
   item: MediaItem
   onDismiss?: (tmdbId: number) => void
+  defaultInWatchlist?: boolean
+  defaultIsWatched?: boolean
+  defaultSeasonWatched?: number | null
 }
 
-export default function MediaCard({ item, onDismiss }: MediaCardProps) {
+export default function MediaCard({ item, onDismiss, defaultInWatchlist, defaultIsWatched, defaultSeasonWatched }: MediaCardProps) {
   const { user, refreshUser } = useUser()
   const [showModal, setShowModal] = useState(false)
   const [details, setDetails] = useState<MediaItem | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
-  const [inWatchlist, setInWatchlist] = useState(false)
-  const [loadingWatchlist, setLoadingWatchlist] = useState(true)
+  const [inWatchlist, setInWatchlist] = useState(defaultInWatchlist ?? false)
+  const [loadingWatchlist, setLoadingWatchlist] = useState(defaultInWatchlist === undefined)
   const [isLiked, setIsLiked] = useState(false)
   const [loadingLiked, setLoadingLiked] = useState(true)
-  const [isWatched, setIsWatched] = useState(false)
-  const [loadingWatched, setLoadingWatched] = useState(true)
-  const [seasonWatched, setSeasonWatched] = useState<number | null>(null)
+  const [isWatched, setIsWatched] = useState(defaultIsWatched ?? false)
+  const [loadingWatched, setLoadingWatched] = useState(defaultIsWatched === undefined)
+  const [seasonWatched, setSeasonWatched] = useState<number | null>(defaultSeasonWatched ?? null)
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null)
   const [seasons, setSeasons] = useState<{ season_number: number; name: string; aired_date?: string }[]>([])
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null)
@@ -90,6 +93,7 @@ export default function MediaCard({ item, onDismiss }: MediaCardProps) {
   const currentReleaseDate = details?.release_date || details?.first_air_date || item.release_date || item.first_air_date || ''
 
   useEffect(() => {
+    if (defaultInWatchlist !== undefined) return
     fetch('/api/watchlist', {
       credentials: 'include'
     })
@@ -100,22 +104,19 @@ export default function MediaCard({ item, onDismiss }: MediaCardProps) {
       })
       .catch(() => {})
       .finally(() => setLoadingWatchlist(false))
-  }, [currentMovieId, currentMediaType])
+  }, [currentMovieId, currentMediaType, defaultInWatchlist])
 
   useEffect(() => {
-    fetch('/api/auth/me', {
-      credentials: 'include'
-    })
-      .then(res => res.json() as Promise<{ user?: { likes?: { tmdbId: number; mediaType: string }[] } }>)
-      .then(data => {
-        const exists = data.user?.likes?.some((l) => l.tmdbId === currentMovieId && l.mediaType === currentMediaType)
-        setIsLiked(!!exists)
-      })
-      .catch(() => {})
-      .finally(() => setLoadingLiked(false))
-  }, [currentMovieId, currentMediaType])
+    const liked = user?.likes?.some((l) => l.tmdbId === currentMovieId && l.mediaType === currentMediaType) ?? false
+    setIsLiked(liked)
+    setLoadingLiked(false)
+  }, [user?.likes, currentMovieId, currentMediaType])
 
   useEffect(() => {
+    if (defaultIsWatched !== undefined) {
+      setLoadingWatched(false)
+      return
+    }
     fetch(`/api/watched?tmdbId=${currentMovieId}&type=${currentMediaType}`, {
       credentials: 'include'
     })
@@ -132,7 +133,7 @@ export default function MediaCard({ item, onDismiss }: MediaCardProps) {
       })
       .catch(() => {})
       .finally(() => setLoadingWatched(false))
-  }, [currentMovieId, currentMediaType])
+  }, [currentMovieId, currentMediaType, defaultIsWatched])
 
   useEffect(() => {
     if ((item as any).certification) return

@@ -9,16 +9,18 @@ import type { MediaItem } from '@/types/media'
 interface MediaTableProps {
   items: MediaItem[]
   onDismiss?: (id: number) => void
+  watchlistIds?: Set<string>
+  watchedIds?: Set<string>
 }
 
-function MediaTableRow({ item, onDismiss, isMobile }: { item: MediaItem; onDismiss?: (id: number) => void; isMobile?: boolean }) {
+function MediaTableRow({ item, onDismiss, isMobile, defaultInWatchlist, defaultIsWatched }: { item: MediaItem; onDismiss?: (id: number) => void; isMobile?: boolean; defaultInWatchlist?: boolean; defaultIsWatched?: boolean }) {
   const { user, refreshUser } = useUser()
-  const [inWatchlist, setInWatchlist] = useState(false)
-  const [loadingWatchlist, setLoadingWatchlist] = useState(true)
+  const [inWatchlist, setInWatchlist] = useState(defaultInWatchlist ?? false)
+  const [loadingWatchlist, setLoadingWatchlist] = useState(defaultInWatchlist === undefined)
   const [isLiked, setIsLiked] = useState(false)
   const [loadingLiked, setLoadingLiked] = useState(true)
-  const [isWatched, setIsWatched] = useState(false)
-  const [loadingWatched, setLoadingWatched] = useState(true)
+  const [isWatched, setIsWatched] = useState(defaultIsWatched ?? false)
+  const [loadingWatched, setLoadingWatched] = useState(defaultIsWatched === undefined)
   const [imageError, setImageError] = useState(false)
 
   const mediaType = item.media_type || item.mediaType || 'movie'
@@ -29,6 +31,7 @@ function MediaTableRow({ item, onDismiss, isMobile }: { item: MediaItem; onDismi
   const imageSrc = (item.image && !imageError) ? item.image : placeholderImage
 
   useEffect(() => {
+    if (defaultInWatchlist !== undefined) return
     fetch('/api/watchlist', { credentials: 'include' })
       .then(res => res.json() as Promise<{ watchlist?: { tmdbId: number; mediaType: string }[] }>)
       .then(data => {
@@ -37,20 +40,19 @@ function MediaTableRow({ item, onDismiss, isMobile }: { item: MediaItem; onDismi
       })
       .catch(() => {})
       .finally(() => setLoadingWatchlist(false))
-  }, [item.id, mediaType])
+  }, [item.id, mediaType, defaultInWatchlist])
 
   useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then(res => res.json() as Promise<{ user?: { likes?: { tmdbId: number; mediaType: string }[] } }>)
-      .then(data => {
-        const exists = data.user?.likes?.some(l => l.tmdbId === item.id && l.mediaType === mediaType)
-        setIsLiked(!!exists)
-      })
-      .catch(() => {})
-      .finally(() => setLoadingLiked(false))
-  }, [item.id, mediaType])
+    const liked = user?.likes?.some((l) => l.tmdbId === item.id && l.mediaType === mediaType) ?? false
+    setIsLiked(liked)
+    setLoadingLiked(false)
+  }, [user?.likes, item.id, mediaType])
 
   useEffect(() => {
+    if (defaultIsWatched !== undefined) {
+      setLoadingWatched(false)
+      return
+    }
     fetch(`/api/watched?tmdbId=${item.id}&type=${mediaType}`, { credentials: 'include' })
       .then(res => res.json() as Promise<{ watched?: { tmdbId: number; mediaType: string }[] }>)
       .then(data => {
@@ -59,7 +61,7 @@ function MediaTableRow({ item, onDismiss, isMobile }: { item: MediaItem; onDismi
       })
       .catch(() => {})
       .finally(() => setLoadingWatched(false))
-  }, [item.id, mediaType])
+  }, [item.id, mediaType, defaultIsWatched])
 
   const toggleWatchlist = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -258,15 +260,26 @@ function MediaTableRow({ item, onDismiss, isMobile }: { item: MediaItem; onDismi
   )
 }
 
-export default function MediaTable({ items, onDismiss }: MediaTableProps) {
+export default function MediaTable({ items, onDismiss, watchlistIds, watchedIds }: MediaTableProps) {
   const isMobile = useIsMobile()
 
   if (isMobile) {
     return (
       <div className="mobile-media-list">
-        {items.map(item => (
-          <MediaTableRow key={item.id} item={item} onDismiss={onDismiss} isMobile />
-        ))}
+        {items.map(item => {
+          const mediaType = item.media_type || item.mediaType || 'movie'
+          const key = `${item.id}-${mediaType}`
+          return (
+            <MediaTableRow
+              key={item.id}
+              item={item}
+              onDismiss={onDismiss}
+              isMobile
+              defaultInWatchlist={watchlistIds ? watchlistIds.has(key) : undefined}
+              defaultIsWatched={watchedIds ? watchedIds.has(key) : undefined}
+            />
+          )
+        })}
       </div>
     )
   }
@@ -285,9 +298,19 @@ export default function MediaTable({ items, onDismiss }: MediaTableProps) {
           </tr>
         </thead>
         <tbody>
-          {items.map(item => (
-            <MediaTableRow key={item.id} item={item} onDismiss={onDismiss} />
-          ))}
+          {items.map(item => {
+            const mediaType = item.media_type || item.mediaType || 'movie'
+            const key = `${item.id}-${mediaType}`
+            return (
+              <MediaTableRow
+                key={item.id}
+                item={item}
+                onDismiss={onDismiss}
+                defaultInWatchlist={watchlistIds ? watchlistIds.has(key) : undefined}
+                defaultIsWatched={watchedIds ? watchedIds.has(key) : undefined}
+              />
+            )
+          })}
         </tbody>
       </table>
     </div>

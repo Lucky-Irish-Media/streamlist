@@ -66,8 +66,11 @@ export default function WatchlistPage() {
     })
   }, [])
 
+  const watchedIdSet = useMemo(() => new Set(watched.map(w => `${w.tmdbId}-${w.mediaType}`)), [watched])
+  const watchlistIdSet = useMemo(() => new Set(watchlist.map(w => `${w.tmdbId}-${w.mediaType}`)), [watchlist])
+
   const sortedItems = useMemo(() => {
-    const watchedIds = new Set(watched.map(w => `${w.tmdbId}-${w.mediaType}`))
+    const watchedIds = watchedIdSet
     
     let filtered = items
     if (filterBy === 'to-watch') {
@@ -181,15 +184,21 @@ export default function WatchlistPage() {
           actionHref="/browse"
         />
       ) : viewMode === 'table' ? (
-        <MediaTable items={sortedItems.filter(Boolean)} />
+        <MediaTable items={sortedItems.filter(Boolean)} watchlistIds={watchlistIdSet} watchedIds={watchedIdSet} />
       ) : (
         <div className="grid grid-5">
-          {sortedItems.filter(Boolean).map((item: MediaItem) => (
-            <MediaCard
-              key={item.id}
-              item={item}
-            />
-          ))}
+          {sortedItems.filter(Boolean).map((item: MediaItem) => {
+            const mediaType = item.media_type || item.mediaType || 'movie'
+            const key = `${item.id}-${mediaType}`
+            return (
+              <MediaCard
+                key={item.id}
+                item={item}
+                defaultInWatchlist={true}
+                defaultIsWatched={watchedIdSet.has(key)}
+              />
+            )
+          })}
         </div>
       )}
     </main>
