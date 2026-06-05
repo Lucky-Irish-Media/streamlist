@@ -1,6 +1,7 @@
 'use client'
 
 import { UserProvider, Header } from '@/components/UserContext'
+import Footer from '@/components/Footer'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, createContext, useContext } from 'react'
 import './globals.css'
@@ -23,11 +24,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
+  const isLogin = pathname === '/login'
+
   return (
-    <>
-      {pathname !== '/login' && <Header />}
-      {children}
-    </>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {!isLogin && <Header />}
+      <main style={{ flex: 1 }}>{children}</main>
+      {!isLogin && <Footer />}
+    </div>
   )
 }
 

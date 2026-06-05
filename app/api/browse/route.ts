@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getImageUrl, getTMDBConfig } from '@/lib/tmdb'
 import {
   cachedGetTrending,
@@ -14,11 +14,10 @@ import { getSessionUser, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 
-export const runtime = 'edge'
 
 export async function GET(req: NextRequest) {
   try {
-    const { env } = getRequestContext()
+    const { env } = await getCloudflareContext({ async: true })
     const tmdb = getTMDBConfig(env as any)
 
     if (!tmdb.apiKey) {

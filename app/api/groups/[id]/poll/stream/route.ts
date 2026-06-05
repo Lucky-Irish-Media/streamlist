@@ -1,8 +1,7 @@
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSessionUser } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
 
-export const runtime = 'edge'
 
 async function getAuthenticatedUser(req: Request, env: { DB?: any }) {
   let sessionId = parseAuthCookie(req.headers.get('cookie') || '')
@@ -15,7 +14,7 @@ async function getAuthenticatedUser(req: Request, env: { DB?: any }) {
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: groupId } = await params
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const dbEnv = { DB: (env as any)?.DB }
 
   const userId = await getAuthenticatedUser(req, dbEnv)

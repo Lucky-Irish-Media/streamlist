@@ -13,27 +13,22 @@ Features and tasks/bugs in the project tracker (`/home/qwexer/Nextcloud/Obsidian
 
 ### Development
 ```bash
-npm run dev          # Start development server
-npm run build       # Build for production
+npm run dev          # Start development server (uses initOpenNextCloudflareForDev for bindings)
+npm run build       # Next.js build (called internally by opennextjs-cloudflare build)
 npm run start       # Start production server
 ```
 
 ### Deployment
 ```bash
-npm run preview   # Build + deploy to preview
-npm run deploy    # Build + deploy to preview (shorthand)
-npm run deploy:prod  # Build + deploy to production
+npm run preview   # Build + preview locally via Wrangler
+npm run deploy    # Build + deploy to preview worker (streamlist-preview)
+npm run deploy:prod  # Build + deploy to production worker (streamlist)
 ```
 
-To deploy to production (use `--branch main`):
-```bash
-npx wrangler pages deploy .vercel/output/static --branch main --commit-dirty=true
-```
+**IMPORTANT:** Never run `npm run deploy:prod` without explicit permission. Preview deploys (`npm run deploy`) are safe to run anytime.
 
-**IMPORTANT:** Deploys MUST go ONLY to Preview branch unless explicitly stated otherwise by the user. Never deploy to production without explicit permission.
-
-Preview URL: https://preview.streamlist-40n.pages.dev
-Production URL: https://streamlist-40n.pages.dev
+Preview worker: https://streamlist-preview.qwexer.workers.dev
+Production worker: https://streamlist.qwexer.workers.dev
 
 ### Database
 ```bash
@@ -45,6 +40,19 @@ npx wrangler d1 execute streamlist-preview-db --remote --command="ALTER TABLE ..
 ```
 
 **IMPORTANT:** Database migrations MUST only run on Preview unless explicitly stated otherwise. Never run migrations on production without explicit permission.
+
+### Environment Variables (Worker Secrets)
+Set these via `wrangler secret put <name>` for preview:
+```bash
+npx wrangler secret put TMDB_API_KEY
+npx wrangler secret put ACCESS_CODE
+npx wrangler secret put CF_API_TOKEN
+```
+
+For production, use `--env production`:
+```bash
+npx wrangler secret put TMDB_API_KEY --env production
+```
 
 ### Type Checking
 ```bash
@@ -94,14 +102,12 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 ### API Routes (Next.js App Router)
 - Place in `app/api/[resource]/route.ts`
 - Export named functions: `GET`, `POST`, `PUT`, `DELETE`
-- Use Edge runtime for Cloudflare compatibility: `export const runtime = 'edge'`
 - Handle errors with try/catch, return JSON error responses
-- Access Cloudflare bindings via `getRequestContext()`:
+- Access Cloudflare bindings via `getCloudflareContext({ async: true })`:
   ```ts
-  import { getRequestContext } from '@cloudflare/next-on-pages'
-  export const runtime = 'edge'
+  import { getCloudflareContext } from '@opennextjs/cloudflare'
   export async function POST(req: NextRequest) {
-    const { env } = getRequestContext()
+    const { env } = await getCloudflareContext({ async: true })
     const db = env.DB  // D1 database binding
   }
   ```
@@ -113,7 +119,7 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 - Query with typed DSL, not raw SQL when possible
 
 ### MCP Server
-- MCP endpoint at `app/api/mcp/route.ts` (Edge runtime)
+- MCP endpoint at `app/api/mcp/route.ts`
 - API key management at `app/api/auth/api-key/route.ts`
 - Schema includes `users.apiKey` for MCP authentication
 - Tools defined in `lib/mcp/server.ts` (for stdio-based usage)
@@ -128,11 +134,10 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 - Prefer inline styles for one-off styling, use CSS classes for reusable patterns
 - Use semantic HTML elements
 
-### Cloudflare Pages Specific
-- All API routes must use Edge runtime
-- Access environment variables via `env` from `getRequestContext()`
+### Cloudflare Workers Specific
+- Access environment variables via `env` from `getCloudflareContext()`
 - D1 database binding accessed as `env.DB`
-- D1 credentials stored in `wrangler.toml`, not committed
+- D1 credentials stored in `wrangler.jsonc`, not committed
 
 ### Security
 - Never commit API keys or secrets
@@ -144,7 +149,7 @@ Note: No test framework or linter is configured. Run `npx tsc --noEmit` before c
 ### File Organization
 ```
 app/
-├── api/           # API routes (Edge runtime)
+├── api/           # API routes
 │   ├── mcp/       # MCP server endpoint
 │   └── auth/      # Auth endpoints (login, logout, me, api-key)
 ├── login/         # Page route

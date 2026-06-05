@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getImageUrl, getTMDBConfig } from '@/lib/tmdb'
 import { cachedSearchMulti, cachedSearchMovies, cachedSearchTVShows } from '@/lib/tmdb-cache'
 
-export const runtime = 'edge'
 
 export async function GET(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const tmdb = getTMDBConfig(env as any)
   const { searchParams } = new URL(req.url)
   const query = searchParams.get('q')

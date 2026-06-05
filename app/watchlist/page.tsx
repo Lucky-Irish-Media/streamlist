@@ -52,15 +52,13 @@ export default function WatchlistPage() {
       setWatched(watchedList)
       
       if (list.length > 0) {
-        Promise.all(
-          list.map(async (item: WatchlistItem) => {
-            const res = await fetch(`/api/media?id=${item.tmdbId}&type=${item.mediaType}`)
-            return res.json() as Promise<MediaItem & { error?: string }>
+        const ids = list.map(item => `${item.tmdbId}|${item.mediaType}`).join(',')
+        fetch(`/api/media/batch?ids=${ids}`)
+          .then(res => res.json() as Promise<{ items: MediaItem[] }>)
+          .then(data => {
+            setItems(data.items || [])
+            setLoading(false)
           })
-        ).then(results => {
-          setItems(results.filter((r) => !(r as MediaItem & { error?: string }).error) as MediaItem[])
-          setLoading(false)
-        })
       } else {
         setItems([])
         setLoading(false)

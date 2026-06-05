@@ -3,9 +3,8 @@
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, List, Users, Settings, HelpCircle, Sparkles } from 'lucide-react'
+import { Home, Search, List, Users, Settings } from 'lucide-react'
 import WhatsNewChangelog from '@/components/WhatsNewChangelog'
-import WhatsNewNavIcon from '@/components/WhatsNewNavIcon'
 import InstallButton from '@/components/InstallButton'
 
 interface User {
@@ -455,10 +454,6 @@ export function Header() {
                 <Link href="/watchlist">Watchlist</Link>
                 <Link href="/groups">Groups</Link>
                 <Link href="/user">Profile</Link>
-                <WhatsNewNavIcon />
-                <Link href="/getting-started" title="Getting Started" style={{ display: 'flex', alignItems: 'center' }}>
-                  <HelpCircle size={18} />
-                </Link>
               </>
             ) : (
               <Link href="/login" style={{ 
@@ -496,14 +491,6 @@ export function Header() {
             <Link href="/user" className={pathname === '/user' ? 'active' : ''}>
               <span className="mobile-nav-icon"><Settings size={20} /></span>
               <span>Profile</span>
-            </Link>
-            <Link href="/whats-new" className={pathname === '/whats-new' ? 'active' : ''}>
-              <span className="mobile-nav-icon"><Sparkles size={20} /></span>
-              <span>What's New</span>
-            </Link>
-            <Link href="/getting-started" className={pathname === '/getting-started' ? 'active' : ''}>
-              <span className="mobile-nav-icon"><HelpCircle size={20} /></span>
-              <span>Help</span>
             </Link>
           </div>
         </nav>

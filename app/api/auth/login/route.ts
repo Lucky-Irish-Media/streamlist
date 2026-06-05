@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { createUser, createSession, validateAccessCode, logLoginAttempt } from '@/lib/auth'
 import { writeLoginEvent } from '@/lib/analytics'
 import { logger } from '@/lib/logger'
 
-export const runtime = 'edge'
 
 function getClientIp(req: NextRequest): string | undefined {
   return req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined
@@ -25,7 +24,7 @@ export async function POST(req: NextRequest) {
   const ipAddress = getClientIp(req)
   const userAgent = getUserAgent(req)
 
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const dbBinding = (env as any)?.DB
 
   if (!dbBinding) {
@@ -64,14 +63,14 @@ export async function POST(req: NextRequest) {
 
     if (!codeValid) {
       await logLoginAttempt(dbEnv, username, false, ipAddress, userAgent, 'invalid_code')
-      writeLoginEvent(env, username, false)
+      writeLoginEvent(env as any, username, false)
       return NextResponse.json({ error: 'Invalid access code' }, { status: 403 })
     }
 
     const userId = await createUser(dbEnv, username)
     const sessionId = await createSession(dbEnv, userId, ipAddress, userAgent)
     await logLoginAttempt(dbEnv, username, true, ipAddress, userAgent)
-    writeLoginEvent(env, username, true)
+    writeLoginEvent(env as any, username, true)
 
     const response = NextResponse.json({ success: true, username })
     response.headers.set('Set-Cookie', `session=${sessionId}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`)
@@ -79,7 +78,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     if (username) {
       await logLoginAttempt(dbEnv, username, false, ipAddress, userAgent, 'error')
-      writeLoginEvent(env, username, false)
+      writeLoginEvent(env as any, username, false)
     }
     logger.error('Login error', { username: username || 'unknown' }, error)
     return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 })

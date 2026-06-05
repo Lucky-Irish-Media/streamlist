@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSessionUser, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { getMovieDetails, getTVDetails, getImageUrl, getTMDBConfig } from '@/lib/tmdb'
 
-export const runtime = 'edge'
 
 export async function GET(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const dbEnv = { DB: (env as any)?.DB }
   const tmdb = getTMDBConfig(env as any)
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getMovieDetails, getTVDetails, getImageUrl, getMovieWatchProviders, getTVWatchProviders, getMovieReleaseDates, getTVContentRatings, getMovieVideos, getTVSeriesVideos, getCollectionDetails, getTVSeasons, getSeasonDetails, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
 
-export const runtime = 'edge'
 
 async function getCertification(mediaType: string, id: number, country: string, tmdb: TMDBConfig) {
   try {
@@ -31,7 +30,7 @@ async function getCertification(mediaType: string, id: number, country: string, 
 }
 
 export async function GET(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const tmdb = getTMDBConfig(env as any)
   const { searchParams } = new URL(req.url)
   const tmdbId = searchParams.get('id')

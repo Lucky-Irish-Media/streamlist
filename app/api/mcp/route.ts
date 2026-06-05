@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { eq, and } from 'drizzle-orm'
 import { getDB, schema, type DB } from '@/lib/db'
 import {
@@ -46,7 +46,6 @@ async function getCertification(mediaType: string, id: number, country: string, 
   }
 }
 
-export const runtime = 'edge'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -1179,7 +1178,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const dbEnv = { DB: (env as any)?.DB }
   const db = getDB(dbEnv)
 

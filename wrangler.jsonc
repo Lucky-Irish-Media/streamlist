@@ -1,0 +1,42 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "streamlist-preview",
+  "workers_dev": true,
+  "compatibility_date": "2026-06-04",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+      { "binding": "DB", "database_name": "streamlist-preview-db", "database_id": "983ba98d-4c10-4eca-bbc4-787f9cb8ffca" }
+  ],
+  "kv_namespaces": [
+    { "binding": "TMDB_CACHE", "id": "168c57e542a8459ab335e493b8c43b65" },
+    { "binding": "POLL_KV", "id": "b9ca3c6cb9574ec3b2f0b17d39f3dc81" }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "POLL_DO", "class_name": "PollDurableObject", "script_name": "poll-worker" }
+    ]
+  },
+  "analytics_engine_datasets": [
+    { "binding": "ANALYTICS", "dataset": "streamlist_preview_events" }
+  ],
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  }
+}

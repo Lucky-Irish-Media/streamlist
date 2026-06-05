@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { deleteSession, endSession, getUserFromSession } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
 import { writeLogoutEvent } from '@/lib/analytics'
 
-export const runtime = 'edge'
 
 export async function POST(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const dbEnv = { DB: (env as any)?.DB }
   let sessionId = parseAuthCookie(req.headers.get('cookie'))
   if (!sessionId) {
@@ -19,7 +18,7 @@ export async function POST(req: NextRequest) {
     await endSession(dbEnv, sessionId)
     await deleteSession(dbEnv, sessionId)
     if (user) {
-      writeLogoutEvent(env, user.id)
+      writeLogoutEvent(env as any, user.id)
     }
   }
 

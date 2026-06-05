@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Users, Key, BarChart3, Shield, LogOut, Menu, X, Activity, Wrench, ScrollText } from 'lucide-react'
+import { Users, Key, BarChart3, Shield, LogOut, Menu, X, Activity, Wrench, ScrollText, MessageSquare } from 'lucide-react'
 import { useIsMobile } from '@/lib/useIsMobile'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/access-codes', icon: Key, label: 'Access Codes' },
     { href: '/admin/audit', icon: ScrollText, label: 'Audit Log' },
     { href: '/admin/maintenance', icon: Wrench, label: 'Maintenance' },
+    { href: '/admin/feedback', icon: MessageSquare, label: 'Feedback' },
   ]
 
   const handleLogout = async () => {

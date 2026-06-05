@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getUserFromSession, parseAuthCookie, deleteSession } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq, desc, gt, and, or, isNull } from 'drizzle-orm'
 
-export const runtime = 'edge'
 
 async function getAdminUser(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const dbEnv = { DB: (env as any)?.DB }
 
   let sessionId = parseAuthCookie(req.headers.get('cookie'))

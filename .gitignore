@@ -10,3 +10,4 @@ tsconfig.tsbuildinfo
 .wrangler
 data/
 public/changelog.json
+.open-next

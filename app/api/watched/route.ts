@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestContext } from '@cloudflare/next-on-pages'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSessionUser } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
 import { eq, and } from 'drizzle-orm'
 
-export const runtime = 'edge'
 
 async function getUserId(req: NextRequest, env: any): Promise<string | null> {
   const dbEnv = { DB: (env as any)?.DB }
@@ -20,7 +19,7 @@ async function getUserId(req: NextRequest, env: any): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
-  const { env } = getRequestContext()
+  const { env } = await getCloudflareContext({ async: true })
   const { searchParams } = new URL(req.url)
   const tmdbId = searchParams.get('tmdbId')
   const type = searchParams.get('type')
@@ -60,7 +59,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { env } = getRequestContext()
+    const { env } = await getCloudflareContext({ async: true })
     const userId = await getUserId(req, env)
 
     if (!userId) {
@@ -151,7 +150,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { env } = getRequestContext()
+    const { env } = await getCloudflareContext({ async: true })
     const userId = await getUserId(req, env)
 
     if (!userId) {

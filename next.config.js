@@ -1,3 +1,5 @@
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -10,15 +12,6 @@ const nextConfig = {
   },
 }
 
-let withNextOnPages = (config) => config
+export default nextConfig
 
-try {
-  const nextOnPages = await import('@cloudflare/next-on-pages')
-  withNextOnPages = nextOnPages.default
-} catch (e) {
-  console.warn('@cloudflare/next-on-pages not available')
-}
-
-const withPages = withNextOnPages(nextConfig)
-
-export default withPages
+initOpenNextCloudflareForDev()

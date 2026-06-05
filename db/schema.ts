@@ -151,3 +151,14 @@ export const episodesWatched = sqliteTable('episodes_watched', {
   episodeNumber: integer('episode_number', { mode: 'number' }).notNull(),
   watchedAt: integer('watched_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
+
+export const feedback = sqliteTable('feedback', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  status: text('status').notNull().$defaultFn(() => 'open'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})
