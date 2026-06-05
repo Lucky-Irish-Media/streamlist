@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/components/UserContext'
@@ -65,7 +65,9 @@ function HomeContent() {
   const [showBanner, setShowBanner] = useState(false)
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(30)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -132,6 +134,46 @@ function HomeContent() {
       .finally(() => setRefreshing(false))
   }, [fetchRecommendations])
 
+  const sortItems = useCallback((items: MediaItem[]): MediaItem[] => {
+    const itemsCopy = [...items]
+    switch (sortBy) {
+      case 'rating':
+        return itemsCopy.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
+      case 'release-date':
+        return itemsCopy.sort((a, b) => {
+          const dateA = a.release_date || a.first_air_date || ''
+          const dateB = b.release_date || b.first_air_date || ''
+          return dateB.localeCompare(dateA)
+        })
+      case 'popularity':
+      default:
+        return itemsCopy
+    }
+  }, [sortBy])
+
+  const sortedForYou = useMemo(
+    () => sortItems([...(data?.forYou || [])]).filter(item => !dismissedIds.has(item.id)),
+    [data?.forYou, sortItems, dismissedIds]
+  )
+
+  const hasMoreItems = useMemo(() => visibleCount < sortedForYou.length, [visibleCount, sortedForYou.length])
+
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
+
+    if (node) {
+      observerRef.current = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && visibleCount < sortedForYou.length) {
+          setVisibleCount(prev => Math.min(prev + 20, sortedForYou.length))
+        }
+      }, { rootMargin: '400px' })
+      observerRef.current.observe(node)
+    }
+  }, [visibleCount, sortedForYou.length])
+
   if (!user) {
     return (
       <div className="hero">
@@ -156,25 +198,6 @@ function HomeContent() {
       </main>
     )
   }
-
-  const sortItems = (items: MediaItem[]): MediaItem[] => {
-    const itemsCopy = [...items]
-    switch (sortBy) {
-      case 'rating':
-        return itemsCopy.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-      case 'release-date':
-        return itemsCopy.sort((a, b) => {
-          const dateA = a.release_date || a.first_air_date || ''
-          const dateB = b.release_date || b.first_air_date || ''
-          return dateB.localeCompare(dateA)
-        })
-      case 'popularity':
-      default:
-        return itemsCopy
-    }
-  }
-
-  const sortedForYou = sortItems([...(data?.forYou || [])]).filter(item => !dismissedIds.has(item.id))
 
 return (
     <main className="container page-content">
@@ -272,16 +295,20 @@ return (
         ) : viewMode === 'table' ? (
           <div className={refreshing ? 'grid-refreshing' : ''}>
             <MediaTable
-              items={sortedForYou.slice(0, 20)}
+              items={sortedForYou.slice(0, visibleCount)}
               onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))}
             />
           </div>
         ) : (
           <div className={`grid grid-5${refreshing ? ' grid-refreshing' : ''}`}>
-            {sortedForYou.slice(0, 20).map((item: ScoredMediaItem) => (
+            {sortedForYou.slice(0, visibleCount).map((item: ScoredMediaItem) => (
               <MediaCard key={item.id} item={item} onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))} />
             ))}
           </div>
+        )}
+
+        {hasMoreItems && (
+          <div ref={sentinelRef} style={{ height: 1 }} />
         )}
       </section>
     </main>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
@@ -8,22 +8,33 @@ import MediaTable from '@/components/MediaTable'
 import ViewToggle from '@/components/ViewToggle'
 import EmptyState from '@/components/EmptyState'
 import LoadingImage from '@/components/LoadingImage'
-import { Lock, ListPlus } from 'lucide-react'
+import { Lock, ListPlus, Loader2 } from 'lucide-react'
 import type { WatchlistItem, MediaItem } from '@/types/media'
 import type { ViewMode } from '@/components/ViewToggle'
 
 type SortOption = 'date-added' | 'rating' | 'title' | 'release-date'
 type FilterOption = 'to-watch' | 'all' | 'watched'
 
+const PAGE_SIZE = 20
+
 export default function WatchlistPage() {
   const { user } = useUser()
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [watched, setWatched] = useState<WatchlistItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [items, setItems] = useState<MediaItem[]>([])
   const [sortBy, setSortBy] = useState<SortOption>('date-added')
   const [filterBy, setFilterBy] = useState<FilterOption>('to-watch')
   const [viewMode, setViewMode] = useState<ViewMode>('card')
+  const [hasMore, setHasMore] = useState(false)
+  const offsetRef = useRef(0)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const hasMoreRef = useRef(false)
+  const loadingMoreRef = useRef(false)
+
+  useEffect(() => { hasMoreRef.current = hasMore }, [hasMore])
+  useEffect(() => { loadingMoreRef.current = loadingMore }, [loadingMore])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -38,47 +49,70 @@ export default function WatchlistPage() {
   }
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/watchlist', { 
-        credentials: 'include'
-      }).then(res => res.json() as Promise<{ watchlist?: WatchlistItem[] }>),
-      fetch('/api/watched', { 
-        credentials: 'include'
-      }).then(res => res.json() as Promise<{ watched?: WatchlistItem[] }>)
-    ]).then(([watchlistData, watchedData]) => {
-      const list = watchlistData.watchlist || []
-      const watchedList = watchedData.watched || []
-      setWatchlist(list)
-      setWatched(watchedList)
-      
-      if (list.length > 0) {
-        const ids = list.map(item => `${item.tmdbId}|${item.mediaType}`).join(',')
-        fetch(`/api/media/batch?ids=${ids}`)
-          .then(res => res.json() as Promise<{ items: MediaItem[] }>)
-          .then(data => {
-            setItems(data.items || [])
-            setLoading(false)
-          })
-      } else {
-        setItems([])
-        setLoading(false)
-      }
-    })
+    fetch('/api/watched', {
+      credentials: 'include'
+    }).then(res => res.json() as Promise<{ watched?: WatchlistItem[] }>)
+      .then(data => {
+        setWatched(data.watched || [])
+      })
   }, [])
+
+  const loadPage = useCallback(async (pageOffset: number) => {
+    const res = await fetch(`/api/watchlist?offset=${pageOffset}&limit=${PAGE_SIZE}`, {
+      credentials: 'include'
+    })
+    const data = await res.json() as { watchlist?: WatchlistItem[]; total?: number }
+    const newItems = data.watchlist || []
+    const total = data.total || 0
+
+    if (newItems.length > 0) {
+      const ids = newItems.map(item => `${item.tmdbId}|${item.mediaType}`).join(',')
+      const mediaRes = await fetch(`/api/media/batch?ids=${ids}`)
+      const mediaData = await mediaRes.json() as { items: MediaItem[] }
+
+      setWatchlist(prev => [...prev, ...newItems])
+      setItems(prev => [...prev, ...(mediaData.items || [])])
+    }
+
+    const nextOffset = pageOffset + PAGE_SIZE
+    offsetRef.current = nextOffset
+    setHasMore(nextOffset < total)
+  }, [])
+
+  useEffect(() => {
+    loadPage(0).then(() => setLoading(false))
+  }, [loadPage])
+
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
+
+    if (node) {
+      observerRef.current = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && hasMoreRef.current && !loadingMoreRef.current) {
+          setLoadingMore(true)
+          loadPage(offsetRef.current).then(() => setLoadingMore(false))
+        }
+      }, { rootMargin: '400px' })
+      observerRef.current.observe(node)
+    }
+  }, [loadPage])
 
   const watchedIdSet = useMemo(() => new Set(watched.map(w => `${w.tmdbId}-${w.mediaType}`)), [watched])
   const watchlistIdSet = useMemo(() => new Set(watchlist.map(w => `${w.tmdbId}-${w.mediaType}`)), [watchlist])
 
   const sortedItems = useMemo(() => {
     const watchedIds = watchedIdSet
-    
+
     let filtered = items
     if (filterBy === 'to-watch') {
       filtered = items.filter(item => !watchedIds.has(`${item.id}-${item.media_type || item.mediaType || 'movie'}`))
     } else if (filterBy === 'watched') {
       filtered = items.filter(item => watchedIds.has(`${item.id}-${item.media_type || item.mediaType || 'movie'}`))
     }
-    
+
     const itemsCopy = [...filtered]
     switch (sortBy) {
       case 'title':
@@ -100,7 +134,7 @@ export default function WatchlistPage() {
   const removeFromWatchlist = async (tmdbId: number, mediaType: string) => {
     await fetch('/api/watchlist', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json'
       },
       credentials: 'include',
@@ -175,7 +209,7 @@ export default function WatchlistPage() {
 
       {loading ? (
         <LoadingImage />
-      ) : items.length === 0 ? (
+      ) : sortedItems.length === 0 ? (
         <EmptyState
           icon={ListPlus}
           title="Your Watchlist is Empty"
@@ -199,6 +233,16 @@ export default function WatchlistPage() {
               />
             )
           })}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div ref={sentinelRef} style={{ height: 1 }} />
+      )}
+
+      {loadingMore && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
+          <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
         </div>
       )}
     </main>

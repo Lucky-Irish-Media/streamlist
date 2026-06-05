@@ -3,7 +3,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getSessionUser } from '@/lib/auth'
 import { parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
-import { eq } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { logger } from '@/lib/logger'
 
 
@@ -16,22 +16,37 @@ export async function GET(req: NextRequest) {
   }
 
   if (!sessionId) {
-    return NextResponse.json({ watchlist: [] })
+    return NextResponse.json({ watchlist: [], total: 0 })
   }
 
   const userId = await getSessionUser(dbEnv, sessionId)
   if (!userId) {
-    return NextResponse.json({ watchlist: [] })
+    return NextResponse.json({ watchlist: [], total: 0 })
   }
 
+  const { searchParams } = new URL(req.url)
+  const offset = parseInt(searchParams.get('offset') || '0')
+  const limit = parseInt(searchParams.get('limit') || '20')
+
   const db = getDB(dbEnv)
+
+  const totalResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.watchlist)
+    .where(eq(schema.watchlist.userId, userId))
+    .get()
+  const total = totalResult?.count || 0
+
   const items = await db
     .select()
     .from(schema.watchlist)
     .where(eq(schema.watchlist.userId, userId))
+    .orderBy(desc(schema.watchlist.addedAt))
+    .limit(limit)
+    .offset(offset)
     .all()
 
-  return NextResponse.json({ watchlist: items })
+  return NextResponse.json({ watchlist: items, total })
 }
 
 export async function POST(req: NextRequest) {
