@@ -468,13 +468,15 @@ export function Header() {
             )}
           </nav>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <WhatsNewNavIcon />
-            <Link href="/getting-started" title="Getting Started" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
-              <HelpCircle size={18} />
-            </Link>
-            <Link href="/feedback" title="Feedback" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
-              <MessageSquare size={18} />
-            </Link>
+            <div className="mobile-only" style={{ alignItems: 'center', gap: '12px' }}>
+              <WhatsNewNavIcon />
+              <Link href="/getting-started" title="Getting Started" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+                <HelpCircle size={18} />
+              </Link>
+              <Link href="/feedback" title="Feedback" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+                <MessageSquare size={18} />
+              </Link>
+            </div>
             <InstallButton />
           </div>
         </div>

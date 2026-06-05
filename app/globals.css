@@ -169,6 +169,7 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   gap: 24px;
   align-items: center;
+  margin-left: auto;
 }
 
 .nav a {
@@ -276,6 +277,14 @@ input:focus, textarea:focus, select:focus {
   font-size: 20px;
 }
 
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
 @media (max-width: 768px) {
   .nav {
     display: none;
@@ -304,17 +313,7 @@ input:focus, textarea:focus, select:focus {
   main.container {
     padding-bottom: 80px;
   }
-}
 
-.mobile-only {
-  display: none;
-}
-
-.desktop-only {
-  display: block;
-}
-
-@media (max-width: 768px) {
   .desktop-only {
     display: none;
   }
