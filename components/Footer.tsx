@@ -46,6 +46,7 @@ export default function Footer() {
 
   return (
     <footer
+      className="desktop-only"
       style={{
         width: '100%',
         backgroundColor: 'var(--bg-secondary)',

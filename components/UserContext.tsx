@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, List, Users, Settings } from 'lucide-react'
+import { Home, Search, List, Users, Settings, HelpCircle, MessageSquare } from 'lucide-react'
 import WhatsNewChangelog from '@/components/WhatsNewChangelog'
+import WhatsNewNavIcon from '@/components/WhatsNewNavIcon'
 import InstallButton from '@/components/InstallButton'
 
 interface User {
@@ -466,7 +467,16 @@ export function Header() {
         }}>Login</Link>
             )}
           </nav>
-          <InstallButton />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <WhatsNewNavIcon />
+            <Link href="/getting-started" title="Getting Started" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+              <HelpCircle size={18} />
+            </Link>
+            <Link href="/feedback" title="Feedback" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
+              <MessageSquare size={18} />
+            </Link>
+            <InstallButton />
+          </div>
         </div>
       </div>
       {user && (

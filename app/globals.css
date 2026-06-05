@@ -310,6 +310,16 @@ input:focus, textarea:focus, select:focus {
   display: none;
 }
 
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+}
+
 .card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border);

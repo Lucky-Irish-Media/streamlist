@@ -2,16 +2,27 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.6.0'
+const CURRENT_VERSION = '1.7.0'
 
 const CHANGELOG = [
+  {
+    version: '1.7.0',
+    date: '2026-06-04',
+    items: [
+      'New Feedback page for submitting suggestions and bug reports',
+      'Admin panel for reviewing and managing user feedback',
+      'Footer navigation with links to What\'s New, Getting Started, and Feedback',
+      'What\'s New, Help, and Feedback moved from header/mobile nav to footer',
+      'Admin tools: session management, audit log, maintenance, access codes',
+      'Full-page What\'s New changelog with commit history and GitHub links',
+    ],
+  },
   {
     version: '1.6.0',
     date: '2026-06-04',
     items: [
       'Dedicated What\'s New page with recent git commits and links to GitHub',
       'Sparkle icon in header with unread indicator for new changes',
-      'What\'s New link added to mobile navigation',
       'Logout button removed from desktop nav (available in Profile)',
     ],
   },

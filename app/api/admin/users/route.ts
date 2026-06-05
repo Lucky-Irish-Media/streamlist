@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getUserFromSession, parseAuthCookie } from '@/lib/auth'
 import { getDB, schema } from '@/lib/db'
-import { eq, desc, count } from 'drizzle-orm'
+import { eq, desc, count, inArray } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { logAuditEvent } from '@/lib/audit'
 
@@ -54,48 +54,76 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { env } = await getCloudflareContext({ async: true })
-  const dbEnv = { DB: (env as any)?.DB }
+  try {
+    const { env } = await getCloudflareContext({ async: true })
+    const dbEnv = { DB: (env as any)?.DB }
 
-  let sessionId = parseAuthCookie(req.headers.get('cookie'))
-  if (!sessionId) {
-    sessionId = req.headers.get('x-session-id')
+    let sessionId = parseAuthCookie(req.headers.get('cookie'))
+    if (!sessionId) {
+      sessionId = req.headers.get('x-session-id')
+    }
+
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await getUserFromSession(dbEnv, sessionId)
+    if (!user || !user.isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const targetUserId = searchParams.get('id')
+
+    if (!targetUserId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+    }
+
+    if (targetUserId === user.id) {
+      return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })
+    }
+
+    const db = getDB(dbEnv)
+
+    await db.delete(schema.episodesWatched).where(eq(schema.episodesWatched.userId, targetUserId)).run()
+    await db.delete(schema.userNotes).where(eq(schema.userNotes.userId, targetUserId)).run()
+    await db.delete(schema.dismissedRecommendations).where(eq(schema.dismissedRecommendations.userId, targetUserId)).run()
+    await db.delete(schema.feedback).where(eq(schema.feedback.userId, targetUserId)).run()
+    await db.delete(schema.groupPollVotes).where(eq(schema.groupPollVotes.userId, targetUserId)).run()
+
+    const userCreatedGroups = await db.select({ id: schema.userGroups.id }).from(schema.userGroups).where(eq(schema.userGroups.createdBy, targetUserId)).all()
+    if (userCreatedGroups.length > 0) {
+      const groupIds = userCreatedGroups.map(g => g.id)
+      const polls = await db.select({ id: schema.groupPolls.id }).from(schema.groupPolls).where(inArray(schema.groupPolls.groupId, groupIds)).all()
+      if (polls.length > 0) {
+        const pollIds = polls.map(p => p.id)
+        await db.delete(schema.groupPollVotes).where(inArray(schema.groupPollVotes.pollId, pollIds)).run()
+        await db.delete(schema.groupPolls).where(inArray(schema.groupPolls.id, pollIds)).run()
+      }
+      await db.delete(schema.groupInvites).where(inArray(schema.groupInvites.groupId, groupIds)).run()
+      await db.delete(schema.userGroupMembers).where(inArray(schema.userGroupMembers.groupId, groupIds)).run()
+      await db.delete(schema.userGroups).where(inArray(schema.userGroups.id, groupIds)).run()
+    }
+
+    await db.delete(schema.groupInvites).where(eq(schema.groupInvites.invitedBy, targetUserId)).run()
+
+    await db.update(schema.accessCodes).set({ createdBy: null }).where(eq(schema.accessCodes.createdBy, targetUserId)).run()
+
+    await db.delete(schema.sessions).where(eq(schema.sessions.userId, targetUserId)).run()
+    await db.delete(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, targetUserId)).run()
+    await db.delete(schema.userGenres).where(eq(schema.userGenres.userId, targetUserId)).run()
+    await db.delete(schema.userLikes).where(eq(schema.userLikes.userId, targetUserId)).run()
+    await db.delete(schema.watchlist).where(eq(schema.watchlist.userId, targetUserId)).run()
+    await db.delete(schema.watched).where(eq(schema.watched.userId, targetUserId)).run()
+    await db.delete(schema.userGroupMembers).where(eq(schema.userGroupMembers.userId, targetUserId)).run()
+    await db.delete(schema.users).where(eq(schema.users.id, targetUserId)).run()
+
+    await logAuditEvent(dbEnv, user.id, 'user_deleted', 'user', targetUserId)
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to delete user' }, { status: 500 })
   }
-
-  if (!sessionId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const user = await getUserFromSession(dbEnv, sessionId)
-  if (!user || !user.isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  const { searchParams } = new URL(req.url)
-  const targetUserId = searchParams.get('id')
-
-  if (!targetUserId) {
-    return NextResponse.json({ error: 'User ID required' }, { status: 400 })
-  }
-
-  if (targetUserId === user.id) {
-    return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 })
-  }
-
-  const db = getDB(dbEnv)
-
-  await db.delete(schema.sessions).where(eq(schema.sessions.userId, targetUserId)).run()
-  await db.delete(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, targetUserId)).run()
-  await db.delete(schema.userGenres).where(eq(schema.userGenres.userId, targetUserId)).run()
-  await db.delete(schema.userLikes).where(eq(schema.userLikes.userId, targetUserId)).run()
-  await db.delete(schema.watchlist).where(eq(schema.watchlist.userId, targetUserId)).run()
-  await db.delete(schema.watched).where(eq(schema.watched.userId, targetUserId)).run()
-  await db.delete(schema.userGroupMembers).where(eq(schema.userGroupMembers.userId, targetUserId)).run()
-  await db.delete(schema.users).where(eq(schema.users.id, targetUserId)).run()
-
-  await logAuditEvent(dbEnv, user.id, 'user_deleted', 'user', targetUserId)
-
-  return NextResponse.json({ success: true })
 }
 
 export async function PUT(req: NextRequest) {
