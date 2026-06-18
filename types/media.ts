@@ -13,6 +13,7 @@ export interface MediaItem {
   first_air_date?: string
   genres?: Genre[]
   certification?: string | null
+  providers?: number[]
 }
 
 export interface Genre {
@@ -56,6 +57,7 @@ export interface WatchProviders {
   rent?: Provider[]
   buy?: Provider[]
   country: string
+  link?: string
 }
 
 export interface Provider {

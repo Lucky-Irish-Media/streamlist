@@ -43,6 +43,27 @@ export const watchlist = sqliteTable('watchlist', {
   userTmdbIdx: index('idx_watchlist_user_tmdb').on(table.userId, table.tmdbId),
 }))
 
+export const watchlists = sqliteTable('watchlists', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  userIdIdx: index('idx_watchlists_user_id').on(table.userId),
+}))
+
+export const watchlistItems = sqliteTable('watchlist_items', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  listId: text('list_id').notNull().references(() => watchlists.id),
+  tmdbId: integer('tmdb_id', { mode: 'number' }).notNull(),
+  mediaType: text('media_type').notNull(),
+  addedAt: integer('added_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+  listIdIdx: index('idx_watchlist_items_list_id').on(table.listId),
+  listTmdbIdx: index('idx_watchlist_items_list_tmdb').on(table.listId, table.tmdbId),
+}))
+
 export const watched = sqliteTable('watched', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   userId: text('user_id').notNull().references(() => users.id),

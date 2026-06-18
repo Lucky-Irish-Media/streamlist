@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { getMovieDetails, getTVDetails, getImageUrl, getMovieReleaseDates, getTVContentRatings, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
+import { getMovieDetails, getTVDetails, getImageUrl, getMovieReleaseDates, getTVContentRatings, getMovieWatchProviders, getTVWatchProviders, getTMDBConfig, type TMDBConfig } from '@/lib/tmdb'
 
 interface BatchItem {
   tmdbId: number
@@ -19,6 +19,7 @@ interface BatchResult {
   first_air_date?: string
   genres: { id: number; name: string }[]
   certification: string | null
+  providers?: number[]
 }
 
 async function getCertification(mediaType: string, id: number, tmdb: TMDBConfig): Promise<string | null> {
@@ -47,6 +48,8 @@ export async function GET(req: NextRequest) {
   const tmdb = getTMDBConfig(env as any)
   const { searchParams } = new URL(req.url)
   const idsParam = searchParams.get('ids')
+  const includeProviders = searchParams.get('includeProviders') === 'true'
+  const watchRegion = searchParams.get('watchRegion') || 'US'
 
   if (!idsParam) {
     return NextResponse.json({ error: 'Missing ids parameter' }, { status: 400 })
@@ -64,10 +67,18 @@ export async function GET(req: NextRequest) {
     const results = await Promise.all(
       items.map(async ({ tmdbId, mediaType }) => {
         try {
-          const [details, certification] = await Promise.all([
+          const [details, certification, providersData] = await Promise.all([
             mediaType === 'tv' ? getTVDetails(tmdbId, tmdb) : getMovieDetails(tmdbId, tmdb),
             getCertification(mediaType, tmdbId, tmdb),
+            includeProviders
+              ? (mediaType === 'tv' ? getTVWatchProviders(tmdbId, tmdb) : getMovieWatchProviders(tmdbId, tmdb))
+              : Promise.resolve(null),
           ])
+
+          const flatrateProviders = includeProviders && providersData
+            ? (providersData.results?.[watchRegion]?.flatrate || []).map((p: any) => p.provider_id)
+            : undefined
+
           return {
             id: details.id,
             title: details.title,
@@ -80,6 +91,7 @@ export async function GET(req: NextRequest) {
             first_air_date: details.first_air_date,
             genres: details.genres || [],
             certification,
+            providers: flatrateProviders,
           }
         } catch {
           return null

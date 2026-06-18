@@ -580,7 +580,7 @@ export default function MediaDetailModal({ tmdbId, mediaType: initialMediaType, 
                       {(details as any).watchProviders.flatrate.map((p: any) => {
                         const isPreferred = user?.streamingServices?.some((s) => s.id === String(p.provider_id))
                         return (
-                          <span key={p.provider_id} className={`provider-pill ${isPreferred ? 'provider-pill--preferred' : ''}`}>
+                          <a key={p.provider_id} href={(details as any).watchProviders.link || '#'} target="_blank" rel="noopener noreferrer" className={`provider-pill ${isPreferred ? 'provider-pill--preferred' : ''}`}>
                             {p.provider_name}
                             {p.type && <span className="provider-type"> ({p.type})</span>}
                             {p.regions && p.regions.length > 0 && (
@@ -588,7 +588,7 @@ export default function MediaDetailModal({ tmdbId, mediaType: initialMediaType, 
                                 {' '}[{p.regions.join(', ')}]
                               </span>
                             )}
-                          </span>
+                          </a>
                         )
                       })}
                     </div>

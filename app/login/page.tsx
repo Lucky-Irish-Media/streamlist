@@ -1,9 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
+
+const BLOCKED_USERNAMES = [
+  'test', 'admin', 'root', 'user', 'guest', 'null', 'undefined',
+  'api', 'asdf', '1234', 'demo', 'dev', 'system',
+  'mod', 'support', 'info', 'mail', 'administrator',
+]
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -11,9 +17,26 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const pathname = usePathname()
 
+  const usernameError = useMemo(() => {
+    const normalized = username.toLowerCase()
+    if (normalized.length === 0) return null
+    if (normalized.length > 1 && /^(.)\1+$/.test(normalized)) {
+      return 'This username is not available'
+    }
+    if (BLOCKED_USERNAMES.includes(normalized)) {
+      return 'This username is not available'
+    }
+    return null
+  }, [username])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (usernameError) {
+      setError(usernameError)
+      return
+    }
 
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -48,6 +71,7 @@ export default function LoginPage() {
             pattern="[a-zA-Z0-9_-]+"
             title="Only letters, numbers, dashes, and underscores are allowed"
           />
+          {usernameError && <div className="field-error">{usernameError}</div>}
         </div>
         <div className="form-group">
           <label className="form-label">Access Code</label>

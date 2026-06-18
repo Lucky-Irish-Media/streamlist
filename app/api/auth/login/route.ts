@@ -52,6 +52,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Username can only contain letters, numbers, dashes, and underscores' }, { status: 400 })
     }
 
+    if (username.length > 1 && /^(.)\1+$/.test(username)) {
+      return NextResponse.json({ error: 'This username is not available' }, { status: 400 })
+    }
+
+    const BLOCKED_USERNAMES = [
+      'test', 'admin', 'root', 'user', 'guest', 'null', 'undefined',
+      'api', 'asdf', '1234', 'demo', 'dev', 'system',
+      'mod', 'support', 'info', 'mail', 'administrator',
+    ]
+
+    if (BLOCKED_USERNAMES.includes(username)) {
+      return NextResponse.json({ error: 'This username is not available' }, { status: 400 })
+    }
+
     const expectedCode = (env as any)?.ACCESS_CODE
     let codeValid = false
 

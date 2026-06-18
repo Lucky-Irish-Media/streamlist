@@ -118,18 +118,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ added: false, message: 'Already watched' })
     }
 
-    const existingWatchlist = await db
+    const defaultList = await db
       .select()
-      .from(schema.watchlist)
-      .where(and(eq(schema.watchlist.userId, userId), eq(schema.watchlist.tmdbId, tmdbId)))
+      .from(schema.watchlists)
+      .where(and(eq(schema.watchlists.userId, userId), eq(schema.watchlists.name, 'Default')))
+      .get()
+    const defaultListId = defaultList?.id || `default_${userId}`
+
+    if (!defaultList) {
+      await db.insert(schema.watchlists).values({
+        id: defaultListId,
+        userId,
+        name: 'Default',
+      }).run()
+    }
+
+    const existingWatchlistItem = await db
+      .select()
+      .from(schema.watchlistItems)
+      .where(and(eq(schema.watchlistItems.listId, defaultListId), eq(schema.watchlistItems.tmdbId, tmdbId)))
       .get()
 
-    if (!existingWatchlist) {
-      await db.insert(schema.watchlist).values({
-        userId,
+    if (!existingWatchlistItem) {
+      await db.insert(schema.watchlistItems).values({
+        listId: defaultListId,
         tmdbId,
         mediaType: finalMediaType,
-      })
+      }).run()
     }
 
     const seasonWatched = finalMediaType === 'tv' && season ? season : null

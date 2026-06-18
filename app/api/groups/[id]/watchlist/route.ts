@@ -54,12 +54,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const serviceCounts: Map<string, number> = new Map()
 
   for (const uid of userIds) {
-    const watchlist = await db
-      .select()
-      .from(schema.watchlist)
-      .where(eq(schema.watchlist.userId, uid))
+    const items = await db
+      .select({
+        tmdbId: schema.watchlistItems.tmdbId,
+        mediaType: schema.watchlistItems.mediaType,
+      })
+      .from(schema.watchlistItems)
+      .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+      .where(eq(schema.watchlists.userId, uid))
       .all()
-    allWatchlists.set(uid, watchlist.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })))
+    allWatchlists.set(uid, items)
 
     const likes = await db.select().from(schema.userLikes).where(eq(schema.userLikes.userId, uid)).all()
     likes.forEach(l => allLikes.add(l.tmdbId))

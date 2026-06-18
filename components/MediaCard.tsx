@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '@/components/UserContext'
-import { Check, Eye, Heart, Trash2, Plus, FileText, Star, ArrowLeft, X, Play, ChevronDown, MoreHorizontal } from 'lucide-react'
+import { Check, Eye, Heart, Trash2, Plus, FileText, Star, ArrowLeft, X, Play, ChevronDown, MoreHorizontal, List } from 'lucide-react'
+import AddToListDialog from '@/components/AddToListDialog'
 
 interface MediaItem {
   id: number
@@ -73,6 +74,7 @@ export default function MediaCard({ item, onDismiss, defaultInWatchlist, default
   const [loadingNote, setLoadingNote] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
   const [showActionsDropdown, setShowActionsDropdown] = useState(false)
+  const [showAddToList, setShowAddToList] = useState(false)
   const actionsDropdownRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
@@ -283,11 +285,9 @@ export default function MediaCard({ item, onDismiss, defaultInWatchlist, default
     try {
       const res = await fetch('/api/watchlist', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
       })
       const data = await res.json() as { error?: string }
       if (data.error) {
@@ -299,6 +299,22 @@ export default function MediaCard({ item, onDismiss, defaultInWatchlist, default
     } catch (err) {
       console.error('Failed to toggle watchlist:', err)
       alert('Error: ' + err)
+    }
+  }
+
+  const removeFromWatchlist = async () => {
+    if (!user) return
+    try {
+      await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+      })
+      setInWatchlist(false)
+      await refreshUser()
+    } catch (err) {
+      console.error('Failed to remove from watchlist:', err)
     }
   }
 
@@ -533,9 +549,9 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
               {isLiked ? <Heart size={16} fill="currentColor" /> : <Heart size={16} />}
             </button>
             <button 
-              onClick={toggleWatchlist}
+              onClick={inWatchlist ? (e: React.MouseEvent) => { e.stopPropagation(); removeFromWatchlist() } : (e: React.MouseEvent) => { e.stopPropagation(); setShowAddToList(true) }}
               className="icon-btn" 
-              title={inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+              title={inWatchlist ? 'Remove from Watchlist' : 'Add to List'}
               disabled={loadingWatchlist}
             >
               {inWatchlist ? <Trash2 size={16} /> : <Plus size={16} />}
@@ -603,11 +619,20 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                       </button>
                       <button 
                         className="dropdown-item" 
-                        onClick={() => { toggleWatchlist({ stopPropagation: () => {} } as React.MouseEvent); setShowActionsDropdown(false) }}
+                        onClick={() => { setShowAddToList(true); setShowActionsDropdown(false) }}
                       >
-                        {inWatchlist ? <Trash2 size={16} /> : <Plus size={16} />}
-                        {inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                        <Plus size={16} />
+                        Add to List...
                       </button>
+                      {inWatchlist && (
+                        <button 
+                          className="dropdown-item" 
+                          onClick={() => { removeFromWatchlist(); setShowActionsDropdown(false) }}
+                        >
+                          <Trash2 size={16} />
+                          Remove from Watchlist
+                        </button>
+                      )}
                       <button 
                         className="dropdown-item" 
                         onClick={() => { dismissRecommendation({ stopPropagation: () => {} } as React.MouseEvent); setShowActionsDropdown(false) }}
@@ -707,7 +732,7 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                         {(details as any).watchProviders.flatrate.map((p: any) => {
                           const isPreferred = user?.streamingServices?.some((s) => s.id === String(p.provider_id))
                           return (
-                            <span key={p.provider_id} className={`provider-pill ${isPreferred ? 'provider-pill--preferred' : ''}`}>
+                            <a key={p.provider_id} href={(details as any).watchProviders.link || '#'} target="_blank" rel="noopener noreferrer" className={`provider-pill ${isPreferred ? 'provider-pill--preferred' : ''}`}>
                               {p.provider_name}
                               {p.type && <span className="provider-type"> ({p.type})</span>}
                               {p.regions && p.regions.length > 0 && (
@@ -715,7 +740,7 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                                   {' '}[{p.regions.join(', ')}]
                                 </span>
                               )}
-                            </span>
+                            </a>
                           )
                         })}
                       </div>
@@ -825,6 +850,19 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
             </div>
           </div>
         </div>
+      )}
+
+      {showAddToList && (
+        <AddToListDialog
+          tmdbId={currentMovieId}
+          mediaType={currentMediaType}
+          onClose={() => setShowAddToList(false)}
+          onDone={() => {
+            setShowAddToList(false)
+            setInWatchlist(true)
+            refreshUser()
+          }}
+        />
       )}
     </>
   )

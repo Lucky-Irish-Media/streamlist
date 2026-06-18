@@ -170,12 +170,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         serviceCounts.set(s.serviceId, (serviceCounts.get(s.serviceId) || 0) + 1)
       })
 
-      const watchlist = await db
-        .select()
-        .from(schema.watchlist)
-        .where(eq(schema.watchlist.userId, uid))
+      const items = await db
+        .select({
+          tmdbId: schema.watchlistItems.tmdbId,
+          mediaType: schema.watchlistItems.mediaType,
+        })
+        .from(schema.watchlistItems)
+        .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+        .where(eq(schema.watchlists.userId, uid))
         .all()
-      allWatchlist.set(uid, watchlist.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })))
+      allWatchlist.set(uid, items)
     }
 
     const commonGenres: number[] = []

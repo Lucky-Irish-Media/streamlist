@@ -317,7 +317,10 @@ export async function GET(req: NextRequest) {
         db.select().from(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, userId)).all(),
         db.select().from(schema.userGenres).where(eq(schema.userGenres.userId, userId)).all(),
         db.select().from(schema.userLikes).where(eq(schema.userLikes.userId, userId)).all(),
-        db.select().from(schema.watchlist).where(eq(schema.watchlist.userId, userId)).all(),
+        db.select({ tmdbId: schema.watchlistItems.tmdbId, mediaType: schema.watchlistItems.mediaType })
+          .from(schema.watchlistItems)
+          .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+          .where(eq(schema.watchlists.userId, userId)).all(),
         db.select().from(schema.watched).where(eq(schema.watched.userId, userId)).all(),
         db.select().from(schema.dismissedRecommendations).where(eq(schema.dismissedRecommendations.userId, userId)).all(),
         db.select().from(schema.users).where(eq(schema.users.id, userId)).all(),

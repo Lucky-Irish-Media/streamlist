@@ -132,6 +132,8 @@ export async function GET(req: NextRequest) {
       rawResultsKeys: providers.results ? Object.keys(providers.results) : [],
     }
 
+    const watchLink = providers.results?.[countries[0]]?.link || null
+
     return NextResponse.json({
       ...item,
       media_type: mediaType,
@@ -141,6 +143,7 @@ export async function GET(req: NextRequest) {
       watchProviders: {
         countries,
         flatrate,
+        link: watchLink,
       },
       collection,
       seasons,

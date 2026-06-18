@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { getDB, schema, type DB } from '@/lib/db'
 import {
   searchMulti,
@@ -105,9 +105,13 @@ async function getUserPreferences(db: DB, userId: string) {
     .all()
 
   const watchlistItems = await db
-    .select()
-    .from(schema.watchlist)
-    .where(eq(schema.watchlist.userId, userId))
+    .select({
+      tmdbId: schema.watchlistItems.tmdbId,
+      mediaType: schema.watchlistItems.mediaType,
+    })
+    .from(schema.watchlistItems)
+    .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+    .where(eq(schema.watchlists.userId, userId))
     .all()
 
   const countries = user?.countries ? JSON.parse(user.countries) : ['US']
@@ -117,22 +121,50 @@ async function getUserPreferences(db: DB, userId: string) {
     streamingServices: streamingServices.map(s => s.serviceId),
     genres: genres.map(g => g.genreId),
     likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
-    watchlist: watchlistItems.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })),
+    watchlist: watchlistItems,
   }
+}
+
+async function getDefaultListId(db: DB, userId: string): Promise<string> {
+  const defaultList = await db
+    .select()
+    .from(schema.watchlists)
+    .where(and(eq(schema.watchlists.userId, userId), eq(schema.watchlists.name, 'Default')))
+    .get()
+  if (defaultList) return defaultList.id
+
+  const { nanoid } = await import('nanoid')
+  const id = `default_${userId}`
+  await db.insert(schema.watchlists).values({
+    id,
+    userId,
+    name: 'Default',
+  }).run()
+  return id
 }
 
 async function handleTool(db: DB, userId: string, toolName: string, args?: Record<string, unknown>, tmdb?: TMDBConfig) {
   switch (toolName) {
     case 'get_watchlist': {
+      const listId = (args as any)?.list_id as string | undefined
+      if (listId) {
+        const items = await db
+          .select()
+          .from(schema.watchlistItems)
+          .where(eq(schema.watchlistItems.listId, listId))
+          .all()
+        return items
+      }
+      const defaultListId = await getDefaultListId(db, userId)
       const items = await db
         .select()
-        .from(schema.watchlist)
-        .where(eq(schema.watchlist.userId, userId))
+        .from(schema.watchlistItems)
+        .where(eq(schema.watchlistItems.listId, defaultListId))
         .all()
       return items
     }
     case 'add_to_watchlist': {
-      const { query, media_type } = args as { query: string; media_type?: string }
+      const { query, media_type, list_id } = args as { query: string; media_type?: string; list_id?: string }
       const searchResults = await searchMulti(query, 1, tmdb)
       const candidates = searchResults.results.filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
       
@@ -154,37 +186,58 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
       }
 
       const tmdb_id = match.id
+      const targetListId = list_id || await getDefaultListId(db, userId)
       const existing = await db
         .select()
-        .from(schema.watchlist)
+        .from(schema.watchlistItems)
         .where(
           and(
-            eq(schema.watchlist.userId, userId),
-            eq(schema.watchlist.tmdbId, tmdb_id)
+            eq(schema.watchlistItems.listId, targetListId),
+            eq(schema.watchlistItems.tmdbId, tmdb_id)
           )
         )
         .get()
       if (existing) {
         return { success: false, message: `${match.title || match.name} already in watchlist` }
       }
-      await db.insert(schema.watchlist).values({
-        userId,
+      await db.insert(schema.watchlistItems).values({
+        listId: targetListId,
         tmdbId: tmdb_id,
         mediaType: match.media_type,
       }).run()
       return { success: true, message: `Added "${match.title || match.name}" to watchlist` }
     }
     case 'remove_from_watchlist': {
-      const { tmdb_id } = args as { tmdb_id: number }
-      await db
-        .delete(schema.watchlist)
-        .where(
-          and(
-            eq(schema.watchlist.userId, userId),
-            eq(schema.watchlist.tmdbId, tmdb_id)
+      const { tmdb_id, list_id } = args as { tmdb_id: number; list_id?: string }
+      if (list_id) {
+        await db
+          .delete(schema.watchlistItems)
+          .where(
+            and(
+              eq(schema.watchlistItems.listId, list_id),
+              eq(schema.watchlistItems.tmdbId, tmdb_id)
+            )
           )
-        )
-        .run()
+          .run()
+      } else {
+        const items = await db
+          .select()
+          .from(schema.watchlistItems)
+          .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+          .where(
+            and(
+              eq(schema.watchlists.userId, userId),
+              eq(schema.watchlistItems.tmdbId, tmdb_id)
+            )
+          )
+          .all()
+        for (const item of items) {
+          await db
+            .delete(schema.watchlistItems)
+            .where(eq(schema.watchlistItems.id, item.watchlist_items.id))
+            .run()
+        }
+      }
       return { success: true, message: 'Removed from watchlist' }
     }
     case 'get_preferences': {
@@ -211,16 +264,20 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
         .from(schema.userLikes)
         .where(eq(schema.userLikes.userId, userId))
         .all()
-      const watchlist = await db
-        .select()
-        .from(schema.watchlist)
-        .where(eq(schema.watchlist.userId, userId))
+      const watchlistItems = await db
+        .select({
+          tmdbId: schema.watchlistItems.tmdbId,
+          mediaType: schema.watchlistItems.mediaType,
+        })
+        .from(schema.watchlistItems)
+        .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+        .where(eq(schema.watchlists.userId, userId))
         .all()
       return {
         streamingServices: streamingServices.map(s => ({ id: s.serviceId, name: s.serviceName })),
         genres: genres.map(g => g.genreId),
         likes: likes.map(l => ({ tmdbId: l.tmdbId, mediaType: l.mediaType, title: l.title })),
-        watchlist: watchlist.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })),
+        watchlist: watchlistItems,
         countries: user.countries ? JSON.parse(user.countries) : ['US'],
       }
     }
@@ -628,12 +685,16 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
       const serviceCounts: Map<string, number> = new Map()
 
       for (const uid of userIds) {
-        const watchlist = await db
-          .select()
-          .from(schema.watchlist)
-          .where(eq(schema.watchlist.userId, uid))
+        const items = await db
+          .select({
+            tmdbId: schema.watchlistItems.tmdbId,
+            mediaType: schema.watchlistItems.mediaType,
+          })
+          .from(schema.watchlistItems)
+          .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+          .where(eq(schema.watchlists.userId, uid))
           .all()
-        allWatchlists.set(uid, watchlist.map(w => ({ tmdbId: w.tmdbId, mediaType: w.mediaType })))
+        allWatchlists.set(uid, items)
 
         const likes = await db.select().from(schema.userLikes).where(eq(schema.userLikes.userId, uid)).all()
         likes.forEach(l => excludedIds.add(l.tmdbId))
@@ -1148,6 +1209,55 @@ async function handleTool(db: DB, userId: string, toolName: string, args?: Recor
 
       return { success: true, dismissed: true, message: 'Recommendation dismissed' }
     }
+    case 'list_watchlists': {
+      const lists = await db
+        .select()
+        .from(schema.watchlists)
+        .where(eq(schema.watchlists.userId, userId))
+        .all()
+      const listsWithCounts = await Promise.all(lists.map(async (list) => {
+        const countResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.watchlistItems)
+          .where(eq(schema.watchlistItems.listId, list.id))
+          .get()
+        return { ...list, itemCount: countResult?.count || 0 }
+      }))
+      return { lists: listsWithCounts }
+    }
+    case 'create_watchlist': {
+      const { name, description } = args as { name: string; description?: string }
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return { error: 'List name is required' }
+      }
+      const sanitizedName = name.trim().replace(/<[^>]*>/g, '')
+      const { nanoid } = await import('nanoid')
+      const id = nanoid(16)
+      await db.insert(schema.watchlists).values({
+        id,
+        userId,
+        name: sanitizedName,
+        description: description || null,
+      }).run()
+      return { success: true, list: { id, name: sanitizedName } }
+    }
+    case 'delete_watchlist': {
+      const { list_id } = args as { list_id: string }
+      const list = await db
+        .select()
+        .from(schema.watchlists)
+        .where(and(eq(schema.watchlists.id, list_id), eq(schema.watchlists.userId, userId)))
+        .get()
+      if (!list) {
+        return { error: 'Watchlist not found' }
+      }
+      if (list.name === 'Default') {
+        return { error: 'Cannot delete the Default list' }
+      }
+      await db.delete(schema.watchlistItems).where(eq(schema.watchlistItems.listId, list_id)).run()
+      await db.delete(schema.watchlists).where(eq(schema.watchlists.id, list_id)).run()
+      return { success: true, message: 'Watchlist deleted' }
+    }
     default:
       return { error: `Unknown tool: ${toolName}` }
   }
@@ -1337,6 +1447,9 @@ export async function GET(req: NextRequest) {
     { name: 'add_note', description: 'Add or update a user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] }, note: { type: 'string' } }, required: ['tmdb_id', 'media_type', 'note'] } },
     { name: 'delete_note', description: 'Delete a user\'s note for a movie or TV show', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
     { name: 'dismiss_recommendation', description: 'Dismiss a recommendation so it no longer appears in future recommendations', inputSchema: { type: 'object', properties: { tmdb_id: { type: 'number' }, media_type: { type: 'string', enum: ['movie', 'tv'] } }, required: ['tmdb_id', 'media_type'] } },
+    { name: 'list_watchlists', description: 'Get all watchlists for the user', inputSchema: { type: 'object', properties: {} } },
+    { name: 'create_watchlist', description: 'Create a new named watchlist', inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'The name of the new watchlist' }, description: { type: 'string', description: 'Optional description' } }, required: ['name'] } },
+    { name: 'delete_watchlist', description: 'Delete a watchlist (cannot delete the Default list)', inputSchema: { type: 'object', properties: { list_id: { type: 'string', description: 'The ID of the watchlist to delete' } }, required: ['list_id'] } },
   ]
 
   return NextResponse.json({

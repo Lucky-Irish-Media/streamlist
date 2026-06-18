@@ -185,3 +185,19 @@ Then in prompts, you can say things like:
 1. Run `npx tsc --noEmit` to check for type errors
 2. Ensure build succeeds: `npm run build`
 3. Check for console.log statements (remove in production code)
+
+## Release Command: "make it so"
+
+When the user says **"make it so"**, execute the full release flow:
+
+1. **Update changelog** — Add a new version entry to `components/WhatsNewChangelog.tsx`:
+   - Bump `CURRENT_VERSION` to the next minor version (e.g., `1.9.0` → `1.10.0`)
+   - Add an entry for the new version describing what was just implemented
+   - Insert at the top of the `CHANGELOG` array
+2. **Stage all changes** — `git add -A`
+3. **Commit** — `git commit -m "release: v<version> — <short description>"`
+4. **Push to GitHub** — `git push`
+5. **Deploy to production** — `npm run deploy:prod`
+6. **Mark done** — Set the relevant feature/task tracker file(s) status to `done`
+
+**Important:** This grants explicit permission to run `npm run deploy:prod`. Only execute this when the user explicitly says "make it so".

@@ -1133,6 +1133,12 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid var(--border-color);
   font-size: 13px;
   color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.provider-pill:hover {
+  opacity: 0.8;
 }
 
 .provider-pill--preferred {

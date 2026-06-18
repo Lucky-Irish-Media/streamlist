@@ -2,9 +2,16 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.9.0'
+const CURRENT_VERSION = '1.10.0'
 
 const CHANGELOG = [
+  {
+    version: '1.10.0',
+    date: '2026-06-18',
+    items: [
+      'Streaming service chips in the detail modal now link to the TMDB watch page for the show or movie',
+    ],
+  },
   {
     version: '1.9.0',
     date: '2026-06-18',

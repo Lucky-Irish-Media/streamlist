@@ -33,7 +33,9 @@ export async function GET(req: NextRequest) {
       db.select({ count: count() }).from(schema.sessions).where(eq(schema.sessions.userId, u.id)).get(),
       db.select({ count: count() }).from(schema.loginAttempts).where(eq(schema.loginAttempts.username, u.username)).get(),
       db.select().from(schema.loginAttempts).where(eq(schema.loginAttempts.username, u.username)).orderBy(desc(schema.loginAttempts.createdAt)).limit(1).get(),
-      db.select({ count: count() }).from(schema.watchlist).where(eq(schema.watchlist.userId, u.id)).get(),
+      db.select({ count: count() }).from(schema.watchlistItems)
+        .innerJoin(schema.watchlists, eq(schema.watchlistItems.listId, schema.watchlists.id))
+        .where(eq(schema.watchlists.userId, u.id)).get(),
     ])
 
     return {
@@ -113,6 +115,15 @@ export async function DELETE(req: NextRequest) {
     await db.delete(schema.userStreamingServices).where(eq(schema.userStreamingServices.userId, targetUserId)).run()
     await db.delete(schema.userGenres).where(eq(schema.userGenres.userId, targetUserId)).run()
     await db.delete(schema.userLikes).where(eq(schema.userLikes.userId, targetUserId)).run()
+    const userLists = await db
+      .select({ id: schema.watchlists.id })
+      .from(schema.watchlists)
+      .where(eq(schema.watchlists.userId, targetUserId))
+      .all()
+    for (const l of userLists) {
+      await db.delete(schema.watchlistItems).where(eq(schema.watchlistItems.listId, l.id)).run()
+    }
+    await db.delete(schema.watchlists).where(eq(schema.watchlists.userId, targetUserId)).run()
     await db.delete(schema.watchlist).where(eq(schema.watchlist.userId, targetUserId)).run()
     await db.delete(schema.watched).where(eq(schema.watched.userId, targetUserId)).run()
     await db.delete(schema.userGroupMembers).where(eq(schema.userGroupMembers.userId, targetUserId)).run()

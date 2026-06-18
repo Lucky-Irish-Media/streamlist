@@ -128,13 +128,13 @@ export async function getTVSimilar(tvId: number, page = 1, tmdbConfig?: TMDBConf
 }
 
 export async function getMovieWatchProviders(movieId: number, tmdbConfig?: TMDBConfig): Promise<{
-  results: Record<string, { flatrate?: StreamingProvider[]; free?: StreamingProvider[]; ads?: StreamingProvider[]; rent?: StreamingProvider[]; buy?: StreamingProvider[] }>
+  results: Record<string, { link?: string; flatrate?: StreamingProvider[]; free?: StreamingProvider[]; ads?: StreamingProvider[]; rent?: StreamingProvider[]; buy?: StreamingProvider[] }>
 }> {
   return fetchFromTMDB(`/movie/${movieId}/watch/providers`, {}, tmdbConfig)
 }
 
 export async function getTVWatchProviders(tvId: number, tmdbConfig?: TMDBConfig): Promise<{
-  results: Record<string, { flatrate?: StreamingProvider[]; free?: StreamingProvider[]; ads?: StreamingProvider[]; rent?: StreamingProvider[]; buy?: StreamingProvider[] }>
+  results: Record<string, { link?: string; flatrate?: StreamingProvider[]; free?: StreamingProvider[]; ads?: StreamingProvider[]; rent?: StreamingProvider[]; buy?: StreamingProvider[] }>
 }> {
   return fetchFromTMDB(`/tv/${tvId}/watch/providers`, {}, tmdbConfig)
 }
