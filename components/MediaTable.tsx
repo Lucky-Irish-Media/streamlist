@@ -9,11 +9,12 @@ import type { MediaItem } from '@/types/media'
 interface MediaTableProps {
   items: MediaItem[]
   onDismiss?: (id: number) => void
+  onOpenDetail?: (item: MediaItem) => void
   watchlistIds?: Set<string>
   watchedIds?: Set<string>
 }
 
-function MediaTableRow({ item, onDismiss, isMobile, defaultInWatchlist, defaultIsWatched }: { item: MediaItem; onDismiss?: (id: number) => void; isMobile?: boolean; defaultInWatchlist?: boolean; defaultIsWatched?: boolean }) {
+function MediaTableRow({ item, onDismiss, onOpenDetail, isMobile, defaultInWatchlist, defaultIsWatched }: { item: MediaItem; onDismiss?: (id: number) => void; onOpenDetail?: (item: MediaItem) => void; isMobile?: boolean; defaultInWatchlist?: boolean; defaultIsWatched?: boolean }) {
   const { user, refreshUser } = useUser()
   const [inWatchlist, setInWatchlist] = useState(defaultInWatchlist ?? false)
   const [loadingWatchlist, setLoadingWatchlist] = useState(defaultInWatchlist === undefined)
@@ -137,7 +138,7 @@ function MediaTableRow({ item, onDismiss, isMobile, defaultInWatchlist, defaultI
 
   if (isMobile) {
     return (
-      <div className={`mobile-media-card${isWatched ? ' watched' : ''}`}>
+      <div className={`mobile-media-card${isWatched ? ' watched' : ''}`} onClick={() => onOpenDetail?.(item)} style={{ cursor: 'pointer' }}>
         <div className="mobile-media-card-main">
           <img
             src={imageSrc}
@@ -197,7 +198,7 @@ function MediaTableRow({ item, onDismiss, isMobile, defaultInWatchlist, defaultI
   }
 
   return (
-    <tr className={`media-table-row${isWatched ? ' watched' : ''}`}>
+    <tr className={`media-table-row${isWatched ? ' watched' : ''}`} onClick={() => onOpenDetail?.(item)} style={{ cursor: 'pointer' }}>
       <td className="table-cell-title">
         <img
           src={imageSrc}
@@ -260,7 +261,7 @@ function MediaTableRow({ item, onDismiss, isMobile, defaultInWatchlist, defaultI
   )
 }
 
-export default function MediaTable({ items, onDismiss, watchlistIds, watchedIds }: MediaTableProps) {
+export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistIds, watchedIds }: MediaTableProps) {
   const isMobile = useIsMobile()
 
   if (isMobile) {
@@ -274,6 +275,7 @@ export default function MediaTable({ items, onDismiss, watchlistIds, watchedIds 
               key={item.id}
               item={item}
               onDismiss={onDismiss}
+              onOpenDetail={onOpenDetail}
               isMobile
               defaultInWatchlist={watchlistIds ? watchlistIds.has(key) : undefined}
               defaultIsWatched={watchedIds ? watchedIds.has(key) : undefined}
@@ -306,6 +308,7 @@ export default function MediaTable({ items, onDismiss, watchlistIds, watchedIds 
                 key={item.id}
                 item={item}
                 onDismiss={onDismiss}
+                onOpenDetail={onOpenDetail}
                 defaultInWatchlist={watchlistIds ? watchlistIds.has(key) : undefined}
                 defaultIsWatched={watchedIds ? watchedIds.has(key) : undefined}
               />

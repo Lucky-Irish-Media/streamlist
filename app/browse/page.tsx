@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'rea
 import { useSearchParams } from 'next/navigation'
 import MediaCard from '@/components/MediaCard'
 import MediaTable from '@/components/MediaTable'
+import MediaDetailModal from '@/components/MediaDetailModal'
 import ViewToggle from '@/components/ViewToggle'
 import EmptyState from '@/components/EmptyState'
 import { SkeletonGrid } from '@/components/Skeleton'
 import { useUser } from '@/components/UserContext'
-import { Search, Monitor } from 'lucide-react'
+import { Search } from 'lucide-react'
 import SearchInlineButton from '@/components/SearchInlineButton'
+import StreamingServiceFilter from '@/components/StreamingServiceFilter'
 import type { MediaItem } from '@/types/media'
 import type { ViewMode } from '@/components/ViewToggle'
 
@@ -59,7 +61,8 @@ function BrowsePageContent() {
   const { user, userLoading } = useUser()
   const [tab, setTab] = useState<Tab>(initialTab || 'trending')
   const [sortBy, setSortBy] = useState<SortOption>('popularity')
-  const [streamable, setStreamable] = useState(true)
+  const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(new Set())
+  const filterInitialized = useRef(false)
   const [viewMode, setViewMode] = useState<ViewMode>('card')
 
   useEffect(() => {
@@ -82,21 +85,29 @@ function BrowsePageContent() {
   const [searchResults, setSearchResults] = useState<MediaItem[]>([])
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [detailItem, setDetailItem] = useState<MediaItem | null>(null)
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isInitialSearch = useRef(true)
 
-  const providerIds = useMemo(() => {
-    if (!user?.streamingServices?.length) return ''
-    return user.streamingServices.map(s => s.id).join('|')
-  }, [user])
+  useEffect(() => {
+    if (!filterInitialized.current && !userLoading && user?.streamingServices?.length) {
+      filterInitialized.current = true
+      setSelectedProviderIds(new Set(user.streamingServices.map(s => s.id)))
+    }
+  }, [user, userLoading])
+
+  const providerIdsForApi = useMemo(() => {
+    if (selectedProviderIds.size === 0) return ''
+    return Array.from(selectedProviderIds).join('|')
+  }, [selectedProviderIds])
 
   const watchRegion = useMemo(() => {
     const countries = (user as any)?.countries
     return Array.isArray(countries) && countries.length > 0 ? countries[0] : 'US'
   }, [user])
 
-  const hasStreamingServices = providerIds.length > 0
+  const hasStreamingFilter = providerIdsForApi.length > 0
 
   const fetchData = useCallback(async (pageNum: number, isLoadMore = false) => {
     if (isLoadMore) {
@@ -106,8 +117,8 @@ function BrowsePageContent() {
     }
 
     let url = `/api/browse?tab=${tab}&page=${pageNum}`
-    if (streamable && hasStreamingServices) {
-      url += `&streamable=true&provider_ids=${encodeURIComponent(providerIds)}&watch_region=${watchRegion}`
+    if (hasStreamingFilter) {
+      url += `&streamable=true&provider_ids=${encodeURIComponent(providerIdsForApi)}&watch_region=${watchRegion}`
     }
 
     const res = await fetch(url)
@@ -128,7 +139,7 @@ function BrowsePageContent() {
     setPage(pageNum)
     setLoading(false)
     setLoadingMore(false)
-  }, [tab, streamable, providerIds, watchRegion, hasStreamingServices])
+  }, [tab, hasStreamingFilter, providerIdsForApi, watchRegion])
 
   useEffect(() => {
     if (userLoading) return
@@ -242,6 +253,7 @@ function BrowsePageContent() {
   }
 
   return (
+    <>
     <main className="container page-content">
       <div className="browse-search">
           <div className="browse-search-input">
@@ -296,17 +308,16 @@ function BrowsePageContent() {
             Clear
           </button>
         )}
+        {user && user.streamingServices.length > 0 && !searchQuery && (
+          <div style={{ marginBottom: '12px' }}>
+            <StreamingServiceFilter
+              services={user.streamingServices}
+              selectedIds={selectedProviderIds}
+              onChange={setSelectedProviderIds}
+            />
+          </div>
+        )}
         <div className="browse-controls-row">
-          {hasStreamingServices && !searchQuery && (
-            <button
-              onClick={() => setStreamable(s => !s)}
-              className={streamable ? 'btn-primary streamable-toggle active' : 'btn-secondary streamable-toggle'}
-              title="Only show content available on your streaming services"
-            >
-              <Monitor size={16} />
-              <span>Streamable Now</span>
-            </button>
-          )}
           {!searchQuery && items.length > 0 && (
             <>
               <ViewToggle viewMode={viewMode} onToggle={handleViewToggle} />
@@ -343,7 +354,7 @@ function BrowsePageContent() {
       ) : (
         <>
           {viewMode === 'table' ? (
-            <MediaTable items={displayItems} onDismiss={handleDismiss} />
+            <MediaTable items={displayItems} onDismiss={handleDismiss} onOpenDetail={(item) => setDetailItem(item)} />
           ) : (
             <div className="grid grid-5">
               {displayItems.map((item: MediaItem) => (
@@ -376,6 +387,16 @@ function BrowsePageContent() {
         />
       )}
     </main>
+
+    {detailItem && (
+      <MediaDetailModal
+        tmdbId={detailItem.id}
+        mediaType={detailItem.media_type || detailItem.mediaType || 'movie'}
+        onClose={() => setDetailItem(null)}
+        onDismiss={handleDismiss}
+      />
+    )}
+    </>
   )
 }
 

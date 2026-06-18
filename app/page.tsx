@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useUser } from '@/components/UserContext'
 import MediaCard from '@/components/MediaCard'
 import MediaTable from '@/components/MediaTable'
+import MediaDetailModal from '@/components/MediaDetailModal'
 import ViewToggle from '@/components/ViewToggle'
 import SearchInlineButton from '@/components/SearchInlineButton'
 import { SkeletonGrid } from '@/components/Skeleton'
@@ -62,6 +63,7 @@ function HomeContent() {
     setViewMode(mode)
     localStorage.setItem('streamlist_view_mode', mode)
   }
+  const [detailItem, setDetailItem] = useState<MediaItem | null>(null)
   const [showBanner, setShowBanner] = useState(false)
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -200,6 +202,7 @@ function HomeContent() {
   }
 
 return (
+    <>
     <main className="container page-content">
       {showBanner && (
         <div style={{
@@ -297,6 +300,7 @@ return (
             <MediaTable
               items={sortedForYou.slice(0, visibleCount)}
               onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))}
+              onOpenDetail={(item) => setDetailItem(item)}
             />
           </div>
         ) : (
@@ -312,6 +316,16 @@ return (
         )}
       </section>
     </main>
+
+    {detailItem && (
+      <MediaDetailModal
+        tmdbId={detailItem.id}
+        mediaType={detailItem.media_type || detailItem.mediaType || 'movie'}
+        onClose={() => setDetailItem(null)}
+        onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))}
+      />
+    )}
+    </>
   )
 }
 

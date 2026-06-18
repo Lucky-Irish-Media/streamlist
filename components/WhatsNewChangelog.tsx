@@ -2,9 +2,30 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.7.0'
+const CURRENT_VERSION = '1.9.0'
 
 const CHANGELOG = [
+  {
+    version: '1.9.0',
+    date: '2026-06-18',
+    items: [
+      'Table view rows now clickable to open the media detail modal',
+      'Standalone detail modal component for use from table and card views',
+      'Infinite scroll on Home and Watchlist pages for better browsing',
+      'Eliminated redundant API calls on the Watchlist page',
+      'Added database indexes for improved query performance',
+    ],
+  },
+  {
+    version: '1.8.0',
+    date: '2026-06-07',
+    items: [
+      'Browse: replaced the "Streamable Now" toggle with per-service streaming service filter',
+      'Watchlist: added streaming service filter to find items available on your subscriptions',
+      'Watchlist items now show which streaming services they\'re available on',
+      'General layout improvements on the Browse page',
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-06-04',
