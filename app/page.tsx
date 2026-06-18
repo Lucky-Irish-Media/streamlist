@@ -49,7 +49,8 @@ function HomeContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [sortBy, setSortBy] = useState<'popularity' | 'rating' | 'release-date'>('popularity')
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('card')
 
   useEffect(() => {
@@ -136,27 +137,57 @@ function HomeContent() {
       .finally(() => setRefreshing(false))
   }, [fetchRecommendations])
 
-  const sortItems = useCallback((items: MediaItem[]): MediaItem[] => {
-    const itemsCopy = [...items]
-    switch (sortBy) {
-      case 'rating':
-        return itemsCopy.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-      case 'release-date':
-        return itemsCopy.sort((a, b) => {
+  const handleSortChange = useCallback((key: string) => {
+    if (sortKey !== key) {
+      const defaultDir = (key === 'rating' || key === 'year') ? 'desc' : 'asc'
+      setSortKey(key)
+      setSortDir(defaultDir)
+    } else if (sortDir === 'asc') {
+      setSortDir('desc')
+    } else {
+      setSortKey(null)
+      setSortDir(null)
+    }
+  }, [sortKey, sortDir])
+
+  const dropdownValue = sortKey === 'rating' ? 'rating'
+    : sortKey === 'year' ? 'release-date'
+    : 'popularity'
+
+  const sortedForYou = useMemo(() => {
+    const itemsCopy = [...(data?.forYou || [])]
+    if (!sortKey || !sortDir) return itemsCopy.filter(item => !dismissedIds.has(item.id))
+
+    itemsCopy.sort((a, b) => {
+      switch (sortKey) {
+        case 'title': {
+          const titleA = (a.title || a.name || '').toLowerCase()
+          const titleB = (b.title || b.name || '').toLowerCase()
+          const cmp = titleA.localeCompare(titleB)
+          return sortDir === 'desc' ? -cmp : cmp
+        }
+        case 'type': {
+          const typeA = (a.media_type || a.mediaType || 'movie')
+          const typeB = (b.media_type || b.mediaType || 'movie')
+          const cmp = typeA.localeCompare(typeB)
+          return sortDir === 'desc' ? -cmp : cmp
+        }
+        case 'rating': {
+          const diff = (b.vote_average || 0) - (a.vote_average || 0)
+          return sortDir === 'asc' ? -diff : diff
+        }
+        case 'year': {
           const dateA = a.release_date || a.first_air_date || ''
           const dateB = b.release_date || b.first_air_date || ''
-          return dateB.localeCompare(dateA)
-        })
-      case 'popularity':
-      default:
-        return itemsCopy
-    }
-  }, [sortBy])
-
-  const sortedForYou = useMemo(
-    () => sortItems([...(data?.forYou || [])]).filter(item => !dismissedIds.has(item.id)),
-    [data?.forYou, sortItems, dismissedIds]
-  )
+          const cmp = dateB.localeCompare(dateA)
+          return sortDir === 'asc' ? -cmp : cmp
+        }
+        default:
+          return 0
+      }
+    })
+    return itemsCopy.filter(item => !dismissedIds.has(item.id))
+  }, [data?.forYou, sortKey, sortDir, dismissedIds])
 
   const hasMoreItems = useMemo(() => visibleCount < sortedForYou.length, [visibleCount, sortedForYou.length])
 
@@ -266,8 +297,13 @@ return (
         </div>
         <ViewToggle viewMode={viewMode} onToggle={handleViewToggle} />
         <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value as 'popularity' | 'rating' | 'release-date')}
+          value={dropdownValue}
+          onChange={e => {
+            const val = e.target.value
+            if (val === 'rating') { setSortKey('rating'); setSortDir('desc') }
+            else if (val === 'release-date') { setSortKey('year'); setSortDir('desc') }
+            else { setSortKey(null); setSortDir(null) }
+          }}
           className="sort-select"
         >
           <option value="popularity">Popularity</option>
@@ -301,6 +337,9 @@ return (
               items={sortedForYou.slice(0, visibleCount)}
               onDismiss={(id) => setDismissedIds(prev => new Set(prev).add(id))}
               onOpenDetail={(item) => setDetailItem(item)}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSortChange={handleSortChange}
             />
           </div>
         ) : (

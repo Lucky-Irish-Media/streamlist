@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/components/UserContext'
 import { useIsMobile } from '@/lib/useIsMobile'
-import { Check, Eye, Heart, Plus, Trash2, Star, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Eye, Heart, Plus, Trash2, Star, X } from 'lucide-react'
 import type { MediaItem } from '@/types/media'
 
 interface MediaTableProps {
@@ -12,6 +12,9 @@ interface MediaTableProps {
   onOpenDetail?: (item: MediaItem) => void
   watchlistIds?: Set<string>
   watchedIds?: Set<string>
+  sortKey?: string | null
+  sortDir?: 'asc' | 'desc' | null
+  onSortChange?: (key: string) => void
 }
 
 function MediaTableRow({ item, onDismiss, onOpenDetail, isMobile, defaultInWatchlist, defaultIsWatched }: { item: MediaItem; onDismiss?: (id: number) => void; onOpenDetail?: (item: MediaItem) => void; isMobile?: boolean; defaultInWatchlist?: boolean; defaultIsWatched?: boolean }) {
@@ -261,7 +264,20 @@ function MediaTableRow({ item, onDismiss, onOpenDetail, isMobile, defaultInWatch
   )
 }
 
-export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistIds, watchedIds }: MediaTableProps) {
+function SortIndicator({ sortDir }: { sortDir: 'asc' | 'desc' | null | undefined }) {
+  if (sortDir === 'asc') return <ArrowUp size={12} style={{ marginLeft: 4 }} />
+  if (sortDir === 'desc') return <ArrowDown size={12} style={{ marginLeft: 4 }} />
+  return <ArrowUpDown size={12} style={{ marginLeft: 4, opacity: 0.4 }} />
+}
+
+const SORTABLE_COLUMNS = [
+  { key: 'title', label: 'Title' },
+  { key: 'type', label: 'Type' },
+  { key: 'rating', label: 'Rating' },
+  { key: 'year', label: 'Year' },
+]
+
+export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistIds, watchedIds, sortKey, sortDir, onSortChange }: MediaTableProps) {
   const isMobile = useIsMobile()
 
   if (isMobile) {
@@ -291,10 +307,16 @@ export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistId
       <table className="media-table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Type</th>
-            <th>Rating</th>
-            <th>Year</th>
+            {SORTABLE_COLUMNS.map(col => (
+              <th
+                key={col.key}
+                className={`sortable${sortKey === col.key ? ' sorted' : ''}`}
+                onClick={() => onSortChange?.(col.key)}
+              >
+                {col.label}
+                <SortIndicator sortDir={sortKey === col.key ? sortDir : null} />
+              </th>
+            ))}
             <th>Cert</th>
             <th>Actions</th>
           </tr>

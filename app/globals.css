@@ -507,6 +507,12 @@ input:focus, textarea:focus, select:focus {
   color: var(--text-secondary);
 }
 
+.field-error {
+  color: var(--danger);
+  font-size: 0.85em;
+  margin-top: 6px;
+}
+
 .error {
   color: var(--danger);
   padding: 12px;
@@ -1388,6 +1394,39 @@ input:focus, textarea:focus, select:focus {
   overflow-x: auto;
 }
 
+.streaming-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.streaming-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.streaming-filter-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.streaming-filter-btn.active {
+  background: rgba(88, 166, 255, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .filter-tabs {
   display: flex;
   gap: 8px;
@@ -1731,6 +1770,19 @@ input:focus, textarea:focus, select:focus {
   background: var(--bg-secondary);
   border-bottom: 2px solid var(--border);
   white-space: nowrap;
+}
+
+.media-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.media-table th.sortable:hover {
+  color: var(--text-primary);
+}
+
+.media-table th.sorted {
+  color: var(--accent);
 }
 
 .media-table td {

@@ -33,7 +33,8 @@ export default function WatchlistPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [items, setItems] = useState<MediaItem[]>([])
-  const [sortBy, setSortBy] = useState<SortOption>('date-added')
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null)
   const [filterBy, setFilterBy] = useState<FilterOption>('to-watch')
   const [viewMode, setViewMode] = useState<ViewMode>('card')
   const [hasMore, setHasMore] = useState(false)
@@ -145,6 +146,24 @@ export default function WatchlistPage() {
   const watchedIdSet = useMemo(() => new Set(watched.map(w => `${w.tmdbId}-${w.mediaType}`)), [watched])
   const watchlistIdSet = useMemo(() => new Set(watchlist.map(w => `${w.tmdbId}-${w.mediaType}`)), [watchlist])
 
+  const handleSortChange = (key: string) => {
+    if (sortKey !== key) {
+      const defaultDir = (key === 'rating' || key === 'year') ? 'desc' : 'asc'
+      setSortKey(key)
+      setSortDir(defaultDir)
+    } else if (sortDir === 'asc') {
+      setSortDir('desc')
+    } else {
+      setSortKey(null)
+      setSortDir(null)
+    }
+  }
+
+  const dropdownValue = sortKey === 'title' ? 'title'
+    : sortKey === 'rating' ? 'rating'
+    : sortKey === 'year' ? 'release-date'
+    : 'date-added'
+
   const sortedItems = useMemo(() => {
     const watchedIds = watchedIdSet
 
@@ -163,22 +182,38 @@ export default function WatchlistPage() {
     }
 
     const itemsCopy = [...filtered]
-    switch (sortBy) {
-      case 'title':
-        return itemsCopy.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''))
-      case 'rating':
-        return itemsCopy.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-      case 'release-date':
-        return itemsCopy.sort((a, b) => {
+    if (!sortKey || !sortDir) return itemsCopy
+
+    itemsCopy.sort((a, b) => {
+      switch (sortKey) {
+        case 'title': {
+          const titleA = (a.title || a.name || '').toLowerCase()
+          const titleB = (b.title || b.name || '').toLowerCase()
+          const cmp = titleA.localeCompare(titleB)
+          return sortDir === 'desc' ? -cmp : cmp
+        }
+        case 'type': {
+          const typeA = (a.media_type || a.mediaType || 'movie')
+          const typeB = (b.media_type || b.mediaType || 'movie')
+          const cmp = typeA.localeCompare(typeB)
+          return sortDir === 'desc' ? -cmp : cmp
+        }
+        case 'rating': {
+          const diff = (b.vote_average || 0) - (a.vote_average || 0)
+          return sortDir === 'asc' ? -diff : diff
+        }
+        case 'year': {
           const dateA = a.release_date || a.first_air_date || ''
           const dateB = b.release_date || b.first_air_date || ''
-          return dateB.localeCompare(dateA)
-        })
-      case 'date-added':
-      default:
-        return itemsCopy
-    }
-  }, [items, sortBy, filterBy, watched, selectedProviderIds])
+          const cmp = dateB.localeCompare(dateA)
+          return sortDir === 'asc' ? -cmp : cmp
+        }
+        default:
+          return 0
+      }
+    })
+    return itemsCopy
+  }, [items, sortKey, sortDir, filterBy, watched, selectedProviderIds])
 
   const activeListName = lists.find(l => l.id === activeListId)?.name || 'Watchlist'
 
@@ -212,8 +247,14 @@ export default function WatchlistPage() {
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <ViewToggle viewMode={viewMode} onToggle={handleViewToggle} />
             <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as SortOption)}
+              value={dropdownValue}
+              onChange={e => {
+                const val = e.target.value as SortOption
+                if (val === 'rating') { setSortKey('rating'); setSortDir('desc') }
+                else if (val === 'title') { setSortKey('title'); setSortDir('asc') }
+                else if (val === 'release-date') { setSortKey('year'); setSortDir('desc') }
+                else { setSortKey(null); setSortDir(null) }
+              }}
               className="sort-select"
             >
               <option value="date-added">Date Added</option>
@@ -292,7 +333,7 @@ export default function WatchlistPage() {
           actionHref="/browse"
         />
       ) : viewMode === 'table' ? (
-        <MediaTable items={sortedItems.filter(Boolean)} watchlistIds={watchlistIdSet} watchedIds={watchedIdSet} onOpenDetail={(item) => setDetailItem(item)} />
+        <MediaTable items={sortedItems.filter(Boolean)} watchlistIds={watchlistIdSet} watchedIds={watchedIdSet} onOpenDetail={(item) => setDetailItem(item)} sortKey={sortKey} sortDir={sortDir} onSortChange={handleSortChange} />
       ) : (
         <div className="grid grid-5">
           {sortedItems.filter(Boolean).map((item: MediaItem) => {
