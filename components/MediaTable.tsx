@@ -15,9 +15,11 @@ interface MediaTableProps {
   sortKey?: string | null
   sortDir?: 'asc' | 'desc' | null
   onSortChange?: (key: string) => void
+  listId?: string
+  onRemoveFromWatchlist?: (tmdbId: number) => void
 }
 
-function MediaTableRow({ item, onDismiss, onOpenDetail, isMobile, defaultInWatchlist, defaultIsWatched }: { item: MediaItem; onDismiss?: (id: number) => void; onOpenDetail?: (item: MediaItem) => void; isMobile?: boolean; defaultInWatchlist?: boolean; defaultIsWatched?: boolean }) {
+function MediaTableRow({ item, onDismiss, onOpenDetail, isMobile, defaultInWatchlist, defaultIsWatched, listId, onRemoveFromWatchlist }: { item: MediaItem; onDismiss?: (id: number) => void; onOpenDetail?: (item: MediaItem) => void; isMobile?: boolean; defaultInWatchlist?: boolean; defaultIsWatched?: boolean; listId?: string; onRemoveFromWatchlist?: (tmdbId: number) => void }) {
   const { user, refreshUser } = useUser()
   const [inWatchlist, setInWatchlist] = useState(defaultInWatchlist ?? false)
   const [loadingWatchlist, setLoadingWatchlist] = useState(defaultInWatchlist === undefined)
@@ -71,15 +73,36 @@ function MediaTableRow({ item, onDismiss, onOpenDetail, isMobile, defaultInWatch
     e.stopPropagation()
     if (!user) { alert('Please log in to add to watchlist'); return }
     try {
-      const res = await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ tmdbId: item.id, mediaType }),
-      })
-      const data = await res.json() as { error?: string }
-      if (data.error) { alert('Error: ' + data.error) }
-      else { setInWatchlist(!inWatchlist); await refreshUser() }
+      if (inWatchlist) {
+        if (listId) {
+          await fetch(`/api/lists/${listId}/items`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ tmdbId: item.id, mediaType }),
+          })
+        } else {
+          await fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ tmdbId: item.id, mediaType }),
+          })
+        }
+        setInWatchlist(false)
+        onRemoveFromWatchlist?.(item.id)
+      } else {
+        const res = await fetch('/api/watchlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: item.id, mediaType }),
+        })
+        const data = await res.json() as { error?: string }
+        if (data.error) { alert('Error: ' + data.error) }
+        else { setInWatchlist(true) }
+      }
+      await refreshUser()
     } catch (err) { console.error('Failed to toggle watchlist:', err) }
   }
 
@@ -277,7 +300,7 @@ const SORTABLE_COLUMNS = [
   { key: 'year', label: 'Year' },
 ]
 
-export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistIds, watchedIds, sortKey, sortDir, onSortChange }: MediaTableProps) {
+export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistIds, watchedIds, sortKey, sortDir, onSortChange, listId, onRemoveFromWatchlist }: MediaTableProps) {
   const isMobile = useIsMobile()
 
   if (isMobile) {
@@ -295,6 +318,8 @@ export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistId
               isMobile
               defaultInWatchlist={watchlistIds ? watchlistIds.has(key) : undefined}
               defaultIsWatched={watchedIds ? watchedIds.has(key) : undefined}
+              listId={listId}
+              onRemoveFromWatchlist={onRemoveFromWatchlist}
             />
           )
         })}
@@ -333,6 +358,8 @@ export default function MediaTable({ items, onDismiss, onOpenDetail, watchlistId
                 onOpenDetail={onOpenDetail}
                 defaultInWatchlist={watchlistIds ? watchlistIds.has(key) : undefined}
                 defaultIsWatched={watchedIds ? watchedIds.has(key) : undefined}
+                listId={listId}
+                onRemoveFromWatchlist={onRemoveFromWatchlist}
               />
             )
           })}

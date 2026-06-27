@@ -2,9 +2,18 @@
 
 import { useState, useEffect } from 'react'
 
-const CURRENT_VERSION = '1.10.0'
+const CURRENT_VERSION = '1.11.0'
 
 const CHANGELOG = [
+  {
+    version: '1.11.0',
+    date: '2026-06-27',
+    items: [
+      'Home page streaming service filter now filters on the client side with zero latency',
+      'Recommendations are tagged with provider data so only watchable items show up',
+      'Removed redundant per-service API calls that were hitting subrequest limits',
+    ],
+  },
   {
     version: '1.10.0',
     date: '2026-06-18',

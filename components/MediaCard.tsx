@@ -43,9 +43,11 @@ interface MediaCardProps {
   defaultInWatchlist?: boolean
   defaultIsWatched?: boolean
   defaultSeasonWatched?: number | null
+  listId?: string
+  onRemoveFromWatchlist?: (tmdbId: number) => void
 }
 
-export default function MediaCard({ item, onDismiss, defaultInWatchlist, defaultIsWatched, defaultSeasonWatched }: MediaCardProps) {
+export default function MediaCard({ item, onDismiss, defaultInWatchlist, defaultIsWatched, defaultSeasonWatched, listId, onRemoveFromWatchlist }: MediaCardProps) {
   const { user, refreshUser } = useUser()
   const [showModal, setShowModal] = useState(false)
   const [details, setDetails] = useState<MediaItem | null>(null)
@@ -75,6 +77,8 @@ export default function MediaCard({ item, onDismiss, defaultInWatchlist, default
   const [savingNote, setSavingNote] = useState(false)
   const [showActionsDropdown, setShowActionsDropdown] = useState(false)
   const [showAddToList, setShowAddToList] = useState(false)
+  const [similarItems, setSimilarItems] = useState<Array<{id: number; title?: string; media_type: string; poster_path: string | null; vote_average: number; release_date?: string}>>([])
+  const [loadingSimilar, setLoadingSimilar] = useState(false)
   const actionsDropdownRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
@@ -136,6 +140,16 @@ export default function MediaCard({ item, onDismiss, defaultInWatchlist, default
       .catch(() => {})
       .finally(() => setLoadingWatched(false))
   }, [currentMovieId, currentMediaType, defaultIsWatched])
+
+  useEffect(() => {
+    setLoadingSimilar(true)
+    setSimilarItems([])
+    fetch(`/api/media/similar?id=${currentMovieId}&type=${currentMediaType}`)
+      .then(res => res.json() as Promise<{ items: typeof similarItems }>)
+      .then(data => setSimilarItems(data.items || []))
+      .catch(() => setSimilarItems([]))
+      .finally(() => setLoadingSimilar(false))
+  }, [currentMovieId, currentMediaType])
 
   useEffect(() => {
     if ((item as any).certification) return
@@ -305,13 +319,23 @@ export default function MediaCard({ item, onDismiss, defaultInWatchlist, default
   const removeFromWatchlist = async () => {
     if (!user) return
     try {
-      await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
-      })
+      if (listId) {
+        await fetch(`/api/lists/${listId}/items`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+        })
+      } else {
+        await fetch('/api/watchlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tmdbId: currentMovieId, mediaType: currentMediaType }),
+        })
+      }
       setInWatchlist(false)
+      onRemoveFromWatchlist?.(item.id)
       await refreshUser()
     } catch (err) {
       console.error('Failed to remove from watchlist:', err)
@@ -699,6 +723,57 @@ const toggleWatched = async (e: React.MouseEvent, season?: number) => {
                   <div className="modal-overview">
                     <h3>Overview</h3>
                     <p>{details.overview}</p>
+                  </div>
+                )}
+                {!loadingSimilar && similarItems.length > 0 && (
+                  <div className="modal-similar">
+                    <h3>Similar</h3>
+                    <div className="similar-row" style={{
+                      display: 'flex',
+                      gap: '10px',
+                      overflowX: 'auto',
+                      paddingBottom: '8px',
+                      scrollSnapType: 'x mandatory',
+                    }}>
+                      {similarItems.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => navigateToMovie(item.id, currentMediaType)}
+                          style={{
+                            flex: '0 0 auto',
+                            scrollSnapAlign: 'start',
+                            width: '110px',
+                            cursor: 'pointer',
+                            transition: 'opacity 0.15s',
+                          }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.8' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
+                        >
+                          <img
+                            src={item.poster_path ? `https://image.tmdb.org/t/p/w185${item.poster_path}` : 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="110" height="165" viewBox="0 0 110 165"><rect fill="%23222" width="110" height="165"/><text fill="%23666" font-family="system-ui" font-size="10" x="50%" y="50%" text-anchor="middle" dy=".3em">No Image</text></svg>')}
+                            alt={item.title || ''}
+                            style={{
+                              width: '110px',
+                              height: '165px',
+                              borderRadius: '6px',
+                              objectFit: 'cover',
+                              background: 'var(--bg-secondary)',
+                            }}
+                          />
+                          <div style={{
+                            fontSize: '11px',
+                            marginTop: '4px',
+                            color: 'var(--text-primary)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            textAlign: 'center',
+                          }}>
+                            {item.title || ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {(details as any).collection && (details as any).collection.parts && (

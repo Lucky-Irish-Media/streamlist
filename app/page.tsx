@@ -9,6 +9,7 @@ import MediaTable from '@/components/MediaTable'
 import MediaDetailModal from '@/components/MediaDetailModal'
 import ViewToggle from '@/components/ViewToggle'
 import SearchInlineButton from '@/components/SearchInlineButton'
+import StreamingServiceFilter from '@/components/StreamingServiceFilter'
 import { SkeletonGrid } from '@/components/Skeleton'
 import type { RecommendationsData, ScoredMediaItem, MediaItem } from '@/types/media'
 import type { ViewMode } from '@/components/ViewToggle'
@@ -69,6 +70,8 @@ function HomeContent() {
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
   const [visibleCount, setVisibleCount] = useState(30)
+  const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(new Set())
+  const dataFetchedRef = useRef(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -108,21 +111,28 @@ function HomeContent() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchRecommendations = useCallback((refresh?: boolean) => {
-    return fetch(`/api/recommendations${refresh ? '?refresh=1' : ''}`)
+  const fetchRecommendations = useCallback(async (refresh?: boolean) => {
+    const params = refresh ? '?refresh=1' : ''
+    return fetch(`/api/recommendations${params}`)
       .then(res => res.json() as Promise<RecommendationsData>)
   }, [])
 
   useEffect(() => {
-    if (user) {
-      fetchRecommendations()
-        .then(data => {
-          setData(data)
-        })
-        .finally(() => setLoading(false))
-    } else {
+    if (!user) {
       setLoading(false)
+      return
     }
+    if (dataFetchedRef.current) return
+    dataFetchedRef.current = true
+
+    const ids = user.streamingServices?.length
+      ? new Set(user.streamingServices.map(s => s.id))
+      : new Set<string>()
+
+    setSelectedProviderIds(ids)
+    fetchRecommendations(false)
+      .then(data => setData(data))
+      .finally(() => setLoading(false))
   }, [user, fetchRecommendations])
 
   const handleRefresh = useCallback(() => {
@@ -155,39 +165,50 @@ function HomeContent() {
     : 'popularity'
 
   const sortedForYou = useMemo(() => {
-    const itemsCopy = [...(data?.forYou || [])]
-    if (!sortKey || !sortDir) return itemsCopy.filter(item => !dismissedIds.has(item.id))
+    let itemsCopy = [...(data?.forYou || [])]
 
-    itemsCopy.sort((a, b) => {
-      switch (sortKey) {
-        case 'title': {
-          const titleA = (a.title || a.name || '').toLowerCase()
-          const titleB = (b.title || b.name || '').toLowerCase()
-          const cmp = titleA.localeCompare(titleB)
-          return sortDir === 'desc' ? -cmp : cmp
+    // Filter by selected streaming services
+    if (selectedProviderIds.size > 0) {
+      itemsCopy = itemsCopy.filter(item => {
+        if (!item.providers) return true
+        return item.providers.some(pid => selectedProviderIds.has(String(pid)))
+      })
+    }
+
+    // Sort
+    if (sortKey && sortDir) {
+      itemsCopy.sort((a, b) => {
+        switch (sortKey) {
+          case 'title': {
+            const titleA = (a.title || a.name || '').toLowerCase()
+            const titleB = (b.title || b.name || '').toLowerCase()
+            const cmp = titleA.localeCompare(titleB)
+            return sortDir === 'desc' ? -cmp : cmp
+          }
+          case 'type': {
+            const typeA = (a.media_type || a.mediaType || 'movie')
+            const typeB = (b.media_type || b.mediaType || 'movie')
+            const cmp = typeA.localeCompare(typeB)
+            return sortDir === 'desc' ? -cmp : cmp
+          }
+          case 'rating': {
+            const diff = (b.vote_average || 0) - (a.vote_average || 0)
+            return sortDir === 'asc' ? -diff : diff
+          }
+          case 'year': {
+            const dateA = a.release_date || a.first_air_date || ''
+            const dateB = b.release_date || b.first_air_date || ''
+            const cmp = dateB.localeCompare(dateA)
+            return sortDir === 'asc' ? -cmp : cmp
+          }
+          default:
+            return 0
         }
-        case 'type': {
-          const typeA = (a.media_type || a.mediaType || 'movie')
-          const typeB = (b.media_type || b.mediaType || 'movie')
-          const cmp = typeA.localeCompare(typeB)
-          return sortDir === 'desc' ? -cmp : cmp
-        }
-        case 'rating': {
-          const diff = (b.vote_average || 0) - (a.vote_average || 0)
-          return sortDir === 'asc' ? -diff : diff
-        }
-        case 'year': {
-          const dateA = a.release_date || a.first_air_date || ''
-          const dateB = b.release_date || b.first_air_date || ''
-          const cmp = dateB.localeCompare(dateA)
-          return sortDir === 'asc' ? -cmp : cmp
-        }
-        default:
-          return 0
-      }
-    })
+      })
+    }
+
     return itemsCopy.filter(item => !dismissedIds.has(item.id))
-  }, [data?.forYou, sortKey, sortDir, dismissedIds])
+  }, [data?.forYou, sortKey, sortDir, dismissedIds, selectedProviderIds])
 
   const hasMoreItems = useMemo(() => visibleCount < sortedForYou.length, [visibleCount, sortedForYou.length])
 
@@ -312,6 +333,14 @@ return (
         </select>
       </div>
 
+      <div style={{ marginBottom: '20px' }}>
+        <StreamingServiceFilter
+          services={data?.userPreferences?.streamingServices || []}
+          selectedIds={selectedProviderIds}
+          onChange={(ids) => setSelectedProviderIds(ids)}
+        />
+      </div>
+
       <section className="section">
         <div className="section-header">
           <h2 className="section-title">Recommendations</h2>
@@ -327,7 +356,9 @@ return (
         </div>
         {sortedForYou.length === 0 ? (
           <p className="empty-message">
-            {data?.userPreferences?.streamingServices?.length === 0
+            {data?.forYou && data.forYou.length > 0
+              ? 'No items match the selected streaming services. Try selecting more services.'
+              : data?.userPreferences?.streamingServices?.length === 0
               ? 'Like some movies or shows to get personalized recommendations.'
               : 'No recommendations available yet. Like some movies or shows to help us find content for you.'}
           </p>

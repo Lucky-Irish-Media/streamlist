@@ -217,6 +217,11 @@ export default function WatchlistPage() {
 
   const activeListName = lists.find(l => l.id === activeListId)?.name || 'Watchlist'
 
+  const handleRemoveFromWatchlist = useCallback((tmdbId: number) => {
+    setItems(prev => prev.filter(item => item.id !== tmdbId))
+    setWatchlist(prev => prev.filter(w => w.tmdbId !== tmdbId))
+  }, [])
+
   const handleListChanged = () => {
     fetch('/api/lists', { credentials: 'include' })
       .then(res => res.json() as Promise<{ lists: WatchlistInfo[] }>)
@@ -333,7 +338,7 @@ export default function WatchlistPage() {
           actionHref="/browse"
         />
       ) : viewMode === 'table' ? (
-        <MediaTable items={sortedItems.filter(Boolean)} watchlistIds={watchlistIdSet} watchedIds={watchedIdSet} onOpenDetail={(item) => setDetailItem(item)} sortKey={sortKey} sortDir={sortDir} onSortChange={handleSortChange} />
+        <MediaTable items={sortedItems.filter(Boolean)} watchlistIds={watchlistIdSet} watchedIds={watchedIdSet} onOpenDetail={(item) => setDetailItem(item)} sortKey={sortKey} sortDir={sortDir} onSortChange={handleSortChange} listId={activeListId ?? undefined} onRemoveFromWatchlist={handleRemoveFromWatchlist} />
       ) : (
         <div className="grid grid-5">
           {sortedItems.filter(Boolean).map((item: MediaItem) => {
@@ -345,6 +350,8 @@ export default function WatchlistPage() {
                 item={item}
                 defaultInWatchlist={true}
                 defaultIsWatched={watchedIdSet.has(key)}
+                listId={activeListId ?? undefined}
+                onRemoveFromWatchlist={handleRemoveFromWatchlist}
               />
             )
           })}

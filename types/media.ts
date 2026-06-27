@@ -71,8 +71,16 @@ export interface ScoredMediaItem extends MediaItem {
   matchReasons?: string[]
 }
 
+export interface SeedBasedRow {
+  seedTitle: string
+  seedImage: string
+  seedTmdbId: number
+  items: ScoredMediaItem[]
+}
+
 export interface RecommendationsData {
   forYou?: ScoredMediaItem[]
+  seedBasedRows?: SeedBasedRow[]
   recommendations?: MediaItem[]
   trending?: MediaItem[]
   movies?: MediaItem[]
